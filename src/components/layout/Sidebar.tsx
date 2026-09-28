@@ -1,0 +1,163 @@
+import { NavLink, useLocation } from 'react-router-dom'
+import { useAuthStore, useSidebarStore } from '@/store'
+import { useThemeStore } from '@/store/theme'
+import { UserRole } from '@/types'
+import { Logo } from '@/components/Logo'
+import {
+  LayoutDashboard, Users, Building2, PackageSearch, PackageCheck, UsersRound,
+  ShoppingCart, FileText, RotateCcw, History, BarChart3,
+  ClipboardList, Settings, LogOut, Bell, ArrowLeftRight,
+  Receipt, ChevronLeft, ChevronRight, X, Menu, Smartphone,
+  Sun, Moon
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+
+const Sidebar = () => {
+  const { user, clearAuth } = useAuthStore()
+  const { collapsed, mobileOpen, toggleCollapsed, setMobileOpen } = useSidebarStore()
+  const { theme, toggleTheme } = useThemeStore()
+  const location = useLocation()
+
+  const handleLogout = () => {
+    clearAuth()
+    toast.success('Logged out successfully')
+    window.location.href = '/login'
+  }
+
+  const getNavItems = () => {
+    if (!user) return []
+    const items = []
+
+    if (user.role === UserRole.SUPER_ADMIN) {
+      items.push(
+        { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { path: '/admin/users', icon: Users, label: 'Users' },
+        { path: '/admin/branches', icon: Building2, label: 'Branches' },
+        { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
+        { path: '/customers', icon: UsersRound, label: 'Customers' },
+        { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
+        { path: '/admin/sales-history', icon: History, label: 'Sales History' },
+        { path: '/admin/returns', icon: RotateCcw, label: 'Returns' },
+        { path: '/admin/transfers', icon: ArrowLeftRight, label: 'Transfers' },
+        { path: '/admin/devices',   icon: Smartphone,    label: 'Devices' },
+        { path: '/admin/reports',   icon: BarChart3,     label: 'Reports' },
+        { path: '/notifications',   icon: Bell,          label: 'Notifications' },
+        { path: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
+        { path: '/settings', icon: Settings, label: 'Settings' },
+      )
+    }
+
+    if (user.role === UserRole.OVERALL_MANAGER) {
+      items.push(
+        { path: '/manager/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
+        { path: '/customers', icon: UsersRound, label: 'Customers' },
+        { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
+        { path: '/admin/sales-history', icon: History, label: 'Sales History' },
+        { path: '/admin/returns', icon: RotateCcw, label: 'Returns' },
+        { path: '/manager/reports', icon: BarChart3, label: 'Reports' },
+        { path: '/notifications', icon: Bell, label: 'Notifications' },
+        { path: '/settings', icon: Settings, label: 'Settings' },
+      )
+    }
+
+    if (user.role === UserRole.BRANCH_MANAGER) {
+      items.push(
+        { path: '/branch/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
+        { path: '/branch/new-sale', icon: ShoppingCart, label: 'New Sale' },
+        { path: '/branch/invoices', icon: FileText, label: 'Invoices' },
+        { path: '/branch/sales-history', icon: History, label: 'Sales History' },
+        { path: '/branch/returns', icon: RotateCcw, label: 'Returns' },
+        { path: '/branch/expenses', icon: Receipt, label: 'Expenses' },
+        { path: '/branch/transfers', icon: ArrowLeftRight, label: 'Transfers' },
+        { path: '/notifications', icon: Bell, label: 'Notifications' },
+        { path: '/settings', icon: Settings, label: 'Settings' },
+      )
+    }
+
+    return items
+  }
+
+  const navItems = getNavItems()
+
+  const sidebarContent = (
+    <>
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center overflow-hidden">
+          <Logo size="sm" variant="color" showText={!collapsed} />
+        </div>
+        <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 hover:bg-muted rounded-lg shrink-0">
+          <X className="w-5 h-5" />
+        </button>
+        <button onClick={toggleCollapsed} className="hidden lg:flex p-1.5 hover:bg-muted rounded-lg transition-colors shrink-0">
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto p-3">
+        <ul className="space-y-1">
+          {navItems.map((item) => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                    isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )
+                }
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div className="p-3 border-t space-y-2">
+        <button 
+          onClick={toggleTheme} 
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors"
+        >
+          {theme === 'dark' ? <Moon className="w-5 h-5 shrink-0" /> : <Sun className="w-5 h-5 shrink-0" />}
+          {!collapsed && <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>}
+        </button>
+
+        <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 w-full transition-colors">
+          <LogOut className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
+      </div>
+    </>
+  )
+
+  return (
+    <>
+      {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />}
+      <button onClick={() => setMobileOpen(true)} className="fixed top-4 left-4 z-30 lg:hidden p-2 bg-background border rounded-lg shadow-sm">
+        <Menu className="w-5 h-5" />
+      </button>
+
+      <aside
+        className={cn(
+          'fixed left-0 top-0 h-full bg-background border-r flex flex-col z-50 transition-all duration-300',
+          'lg:translate-x-0',
+          mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full',
+          collapsed ? 'lg:w-20' : 'lg:w-64',
+          'w-64'
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
+  )
+}
+
+export default Sidebar
