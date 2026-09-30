@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatCurrency } from '@/lib/utils'
-import { Smartphone, Banknote, CheckCircle2, Loader2, AlertCircle, X, User, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { Smartphone, Banknote, CheckCircle2, Loader2, AlertCircle, X, User, ShieldAlert, ShieldCheck, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PaymentEntry {
@@ -98,33 +98,43 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
   }
 
   // ── Poll status ───────────────────────────────────────────────────────────
+  const checkStatus = async () => {
+    if (!checkoutRequestId) return false
+    try {
+      const res = await mpesaApi.getStatus(checkoutRequestId)
+      const { status, receiptNumber, customerName: name, resultDesc } = res.data
+      if (status === 'COMPLETED') {
+        const finalRef = receiptNumber || checkoutRequestId
+        setMpesaRef(finalRef)
+        setCustomerName(name || null)
+        setMpesaStatus('confirmed')
+        toast.success(`M-Pesa confirmed! Receipt: ${finalRef}`)
+        return true
+      } else if (status === 'FAILED') {
+        setFailureReason(resultDesc || 'Payment failed or was cancelled.')
+        setMpesaStatus('failed')
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
   useEffect(() => {
     if (mpesaStatus !== 'pending' || !checkoutRequestId) return
-    if (pollCount >= 12) {
+    if (pollCount >= 35) {
       setMpesaStatus('failed')
-      setFailureReason('Payment timed out. Enter the M-Pesa receipt code below.')
+      setFailureReason('Payment timed out waiting for customer PIN. If payment was completed, click "Check Status Again" or enter the receipt code below.')
       toast.error('Payment timed out.')
       return
     }
     const timer = setTimeout(async () => {
-      try {
-        const res = await mpesaApi.getStatus(checkoutRequestId)
-        const { status, receiptNumber, customerName: name, resultDesc } = res.data
-        if (status === 'COMPLETED' && receiptNumber) {
-          setMpesaRef(receiptNumber)
-          setCustomerName(name || null)
-          setMpesaStatus('confirmed')
-          toast.success(`M-Pesa confirmed! Receipt: ${receiptNumber}`)
-        } else if (status === 'FAILED') {
-          setFailureReason(resultDesc || 'Payment failed or was cancelled.')
-          setMpesaStatus('failed')
-        } else {
-          setPollCount(c => c + 1)
-        }
-      } catch {
+      const finished = await checkStatus()
+      if (!finished) {
         setPollCount(c => c + 1)
       }
-    }, 5000)
+    }, 3500)
     return () => clearTimeout(timer)
   }, [mpesaStatus, checkoutRequestId, pollCount])
 
@@ -336,19 +346,47 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
                   </div>
 
                   {mpesaStatus === 'pending' && (
-                    <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                      <Loader2 className="w-5 h-5 animate-spin text-amber-600 shrink-0" />
-                      <div>
-                        <p className="text-sm font-bold text-amber-800">Waiting for payment…</p>
-                        <p className="text-xs text-amber-600">Customer should enter their PIN</p>
+                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="w-5 h-5 animate-spin text-amber-600 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-amber-800">Waiting for payment…</p>
+                            <p className="text-xs text-amber-600">Customer should enter their PIN on phone</p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-8 bg-white border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
+                          onClick={() => checkStatus()}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" /> Check Now
+                        </Button>
                       </div>
                     </div>
                   )}
 
                   {mpesaStatus === 'failed' && (
-                    <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-200">
-                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                      <p className="text-xs text-red-700">{failureReason}</p>
+                    <div className="p-3 bg-red-50 rounded-lg border border-red-200 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-700">{failureReason}</p>
+                      </div>
+                      {checkoutRequestId && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full text-xs h-8 bg-white border-red-300 text-red-800 hover:bg-red-100"
+                          onClick={() => {
+                            setMpesaStatus('pending')
+                            setPollCount(0)
+                            checkStatus()
+                          }}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" /> Check Status Again
+                        </Button>
+                      )}
                     </div>
                   )}
 
