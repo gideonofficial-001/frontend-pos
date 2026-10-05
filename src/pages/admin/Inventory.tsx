@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PackageSearch, AlertTriangle, Store, ArrowLeft, Plus, Trash2, Settings2, DollarSign, Globe, MapPin, Pin } from 'lucide-react'
+import { PackageSearch, AlertTriangle, Store, ArrowLeft, Plus, Trash2, Settings2, DollarSign, Globe, MapPin, Pin, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── LOCAL ZUSTAND STORE FOR CATEGORY PINNING ─────────────────────────────────
@@ -265,16 +266,25 @@ const Inventory = () => {
           </div>
         </div>
 
-        {user?.role === UserRole.SUPER_ADMIN && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsAddCategoryOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Add Category
+        <div className="flex gap-2 flex-wrap items-center">
+          {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.OVERALL_MANAGER) && (
+            <Button variant="outline" asChild>
+              <Link to="/stock-adjustments">
+                <SlidersHorizontal className="w-4 h-4 mr-2" /> Adjustments Log
+              </Link>
             </Button>
-            <Button onClick={() => setIsAddProductOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Add Product
-            </Button>
-          </div>
-        )}
+          )}
+          {user?.role === UserRole.SUPER_ADMIN && (
+            <>
+              <Button variant="outline" onClick={() => setIsAddCategoryOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" /> Add Category
+              </Button>
+              <Button onClick={() => setIsAddProductOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" /> Add Product
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Filters bar ── */}

@@ -23,6 +23,7 @@ import Customers from '@/pages/admin/Customers'
 import AuditLogs from '@/pages/admin/AuditLogs'
 import AdminDevices from '@/pages/admin/Devices'
 import AdminReturns from '@/pages/admin/returns'
+import StockAdjustments from '@/pages/admin/StockAdjustments'
 
 // Manager Pages
 import ManagerDashboard from '@/pages/manager/Dashboard'
@@ -150,6 +151,7 @@ function App() {
 
           {/* Admin & Manager Routes */}
           <Route path="/inventory" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><Inventory /></ProtectedRoute>} />
+          <Route path="/stock-adjustments" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><StockAdjustments /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Customers /></ProtectedRoute>} />
           <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Invoices /></ProtectedRoute>} />
           <Route path="/admin/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><SalesHistory /></ProtectedRoute>} />

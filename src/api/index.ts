@@ -121,7 +121,22 @@ export const inventoryApi = {
   ) => api.post(`/inventory/${id}/adjust`, payload),
   getLowStock: () => api.get('/inventory/low-stock'),
   getMovements: (params?: any) => api.get('/inventory/movements', { params }),
+  getAdjustments: (params?: {
+    branchId?: string
+    startDate?: string
+    endDate?: string
+    search?: string
+  }) => api.get('/inventory/adjustments', { params }),
   delete: (id: string) => api.delete(`/inventory/${id}`),
+}
+
+export const stockAdjustmentsApi = {
+  getAll: (params?: {
+    branchId?: string
+    startDate?: string
+    endDate?: string
+    search?: string
+  }) => api.get('/inventory/adjustments', { params }),
 }
 
 // ── Customers ─────────────────────────────────────────────────────────────────

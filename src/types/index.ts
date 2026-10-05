@@ -380,6 +380,36 @@ export interface StockMovement {
   createdAt: string
 }
 
+export interface StockAdjustmentLog {
+  id: string
+  createdAt: string
+  inventoryId: string
+  branchId: string
+  branchName: string
+  branchCode?: string
+  productId: string
+  productName: string
+  productCode?: string
+  isLpg: boolean
+  type: string
+  quantity: number
+  previousQuantity?: number | null
+  newQuantity?: number | null
+  previousFull?: number | null
+  newFull?: number | null
+  previousEmpty?: number | null
+  newEmpty?: number | null
+  changeSummary: string
+  reason: string
+  performedBy?: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    role: string
+  } | null
+}
+
 export interface DashboardStats {
   totalSales: number
   todaySales: number

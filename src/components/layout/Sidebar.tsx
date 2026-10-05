@@ -8,7 +8,7 @@ import {
   ShoppingCart, FileText, RotateCcw, History, BarChart3,
   ClipboardList, Settings, LogOut, Bell, ArrowLeftRight,
   Receipt, ChevronLeft, ChevronRight, X, Menu, Smartphone,
-  Sun, Moon, Sparkles, Heart, Droplets
+  Sun, Moon, Sparkles, Heart, Droplets, SlidersHorizontal
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -42,6 +42,7 @@ const Sidebar = () => {
         { path: '/admin/users', icon: Users, label: 'Users' },
         { path: '/admin/branches', icon: Building2, label: 'Branches' },
         { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/stock-adjustments', icon: SlidersHorizontal, label: 'Stock Adjustments' },
         { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
         { path: '/customers', icon: UsersRound, label: 'Customers' },
         { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
@@ -60,6 +61,7 @@ const Sidebar = () => {
       items.push(
         { path: '/manager/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/stock-adjustments', icon: SlidersHorizontal, label: 'Stock Adjustments' },
         { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
         { path: '/customers', icon: UsersRound, label: 'Customers' },
         { path: '/admin/invoices', icon: FileText, label: 'Invoices' },

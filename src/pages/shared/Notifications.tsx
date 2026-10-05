@@ -72,8 +72,11 @@ function getNotificationRoute(notif: any, userRole: string): string | null {
     return '/notifications?tab=approvals'
   }
 
-  // Low Stock / Inventory
+  // Low Stock / Inventory / Stock Adjustments
   if (type === 'LOW_STOCK' || entity === 'Inventory') {
+    if ((isAdmin || isManager) && (notif.title?.includes('Stock Adjust') || notif.message?.includes('adjusted stock'))) {
+      return '/stock-adjustments'
+    }
     return '/inventory'
   }
 
