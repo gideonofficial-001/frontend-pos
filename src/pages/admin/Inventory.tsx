@@ -207,7 +207,14 @@ const Inventory = () => {
       })
   }, [categories, inventory, search, pinnedCategories])
 
-  const isSelectedLpg = selectedItem?.product?.category?.name.toUpperCase().includes('LPG')
+  const isSelectedLpg = !!(
+    selectedItem?.product?.isLpg ||
+    selectedItem?.product?.isCylinderTracked ||
+    selectedItem?.product?.type === 'LPG_REFILL' ||
+    selectedItem?.product?.type === 'LPG_CYLINDER' ||
+    selectedItem?.product?.category?.name?.toUpperCase().includes('LPG') ||
+    selectedItem?.fullCylinders != null
+  )
 
   if (!activeBranchId && user?.role !== UserRole.BRANCH_MANAGER) {
     return (
@@ -306,7 +313,15 @@ const Inventory = () => {
             </div>
           ) : (
             displayCategories.map((category: any) => {
-              const isLpgConfig = category.name.toUpperCase().includes('LPG')
+              const isLpgConfig =
+                category.name.toUpperCase().includes('LPG') ||
+                category.items.some((item: any) =>
+                  item.product?.isLpg ||
+                  item.product?.isCylinderTracked ||
+                  item.product?.type === 'LPG_REFILL' ||
+                  item.product?.type === 'LPG_CYLINDER' ||
+                  item.fullCylinders != null
+                )
               const currentPage = pageMap[category.id] || 1
               const itemsPerPage = 10
               const paginatedItems = category.items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -579,12 +594,20 @@ const Inventory = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAdjustStockOpen(false)}>Cancel</Button>
-            <Button onClick={() => adjustStockMutation.mutate({
-              id: selectedItem.id,
-              quantity: adjustQuantity,
-              fullCylinders: isSelectedLpg ? adjustFull : undefined,
-              reason: adjustReason
-            })}>
+            <Button
+              disabled={adjustStockMutation.isPending}
+              onClick={() => {
+                if (isSelectedLpg && adjustFull > adjustQuantity) {
+                  return toast.error('Full cylinders cannot exceed total shells');
+                }
+                adjustStockMutation.mutate({
+                  id: selectedItem.id,
+                  quantity: adjustQuantity,
+                  fullCylinders: isSelectedLpg ? adjustFull : undefined,
+                  reason: adjustReason || 'Manual inventory adjustment'
+                });
+              }}
+            >
               {adjustStockMutation.isPending ? 'Saving...' : 'Save Adjustment'}
             </Button>
           </DialogFooter>
@@ -704,11 +727,21 @@ const Inventory = () => {
             <Button variant="outline" onClick={() => setIsAddProductOpen(false)}>Cancel</Button>
             <Button
               disabled={!newProduct.name || !newProduct.code || createProductMutation.isPending}
-              onClick={() => createProductMutation.mutate({
-                ...newProduct,
-                emptyPrice: newProduct.type === 'LPG_REFILL' ? newProduct.emptyPrice : undefined,
-                wholesaleEmptyPrice: newProduct.type === 'LPG_REFILL' ? newProduct.wholesaleEmptyPrice : undefined
-              })}
+              onClick={() => {
+                const selectedCat = categories?.find((c: any) => c.id === newProduct.categoryId)
+                const isLpg =
+                  newProduct.type === 'LPG_REFILL' ||
+                  newProduct.type === 'LPG_CYLINDER' ||
+                  !!selectedCat?.name?.toUpperCase().includes('LPG')
+
+                createProductMutation.mutate({
+                  ...newProduct,
+                  isLpg,
+                  isCylinderTracked: isLpg,
+                  emptyPrice: isLpg ? newProduct.emptyPrice : undefined,
+                  wholesaleEmptyPrice: isLpg ? newProduct.wholesaleEmptyPrice : undefined
+                })
+              }}
             >
               {createProductMutation.isPending ? 'Saving...' : 'Save Product'}
             </Button>

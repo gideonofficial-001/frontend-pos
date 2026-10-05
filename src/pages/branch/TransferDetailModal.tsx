@@ -30,7 +30,7 @@ interface Transfer {
 
 interface TransferItem {
   id: string;
-  product: { id: string; name: string; isCylinderTracked?: boolean; isLpg?: boolean };
+  product: { id: string; name: string; isCylinderTracked?: boolean; isLpg?: boolean; type?: string };
   quantity: number;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   lpgComponent?: 'REFILL' | 'CYLINDER' | null;
@@ -162,7 +162,12 @@ export function TransferDetailModal({ transfer, onClose, onUpdate }: Props) {
 
   // 🚀 The Variant Label Helper
   const getVariantLabel = (item: TransferItem) => {
-    const isLpg = item.product.isLpg || item.product.isCylinderTracked;
+    const isLpg =
+      item.product?.isLpg ||
+      item.product?.isCylinderTracked ||
+      item.product?.type === 'LPG_REFILL' ||
+      item.product?.type === 'LPG_CYLINDER' ||
+      !!item.lpgComponent;
     if (isLpg) {
       if (item.lpgComponent === 'REFILL') return <span className="text-blue-600 font-semibold text-xs ml-1">(Gas Refill)</span>;
       if (item.lpgComponent === 'CYLINDER') return <span className="text-purple-600 font-semibold text-xs ml-1">(Complete Set)</span>;
