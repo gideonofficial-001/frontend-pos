@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { transfersApi, branchesApi, inventoryApi } from '@/api'
 import { useAuthStore } from '@/store'
@@ -24,13 +24,23 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
   const [lpgModalOpen, setLpgModalOpen] = useState(false)
   const [selectedInvItem, setSelectedInvItem] = useState<any>(null)
 
-  const { data: branches = [] } = useQuery({
-    queryKey: ['branches'],
+  const { data: allBranches = [] } = useQuery({
+    queryKey: ['transfer-destination-branches'],
     queryFn: async () => {
       const res = await branchesApi.getAll()
-      return res.data.filter((b: any) => b.id !== userBranchId && b.isActive)
+      return res.data || []
     }
   })
+
+  // The initiating branch must never appear in the destination list
+  const destinationBranches = useMemo(() => {
+    const currentBranchId = userBranchId || user?.branchId
+    return allBranches.filter((b: any) => {
+      if (!b.isActive) return false
+      if (currentBranchId && b.id === currentBranchId) return false
+      return true
+    })
+  }, [allBranches, userBranchId, user?.branchId])
 
   const { data: inventory = [] } = useQuery({
     queryKey: ['inventory', userBranchId],
@@ -103,6 +113,10 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
 
   const handleSubmit = () => {
     if (!toBranchId) return toast.error('Select a destination branch')
+    const currentBranchId = userBranchId || user?.branchId
+    if (currentBranchId && toBranchId === currentBranchId) {
+      return toast.error('Source and destination branches cannot be the same')
+    }
     if (items.length === 0) return toast.error('Cart is empty')
     
     // Validate quantities at checkout using regex
@@ -153,11 +167,20 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
             <div className="p-3 lg:p-4 border-b space-y-2 lg:space-y-3 shrink-0 bg-muted/20">
               <select 
                 value={toBranchId} onChange={(e) => setToBranchId(e.target.value)}
-                className="w-full p-2.5 lg:p-3 border border-blue-200 bg-card rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-sm"
+                className="w-full p-2.5 lg:p-3 border border-border bg-card rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary appearance-none shadow-sm"
               >
                 <option value="">-- Select Destination Branch --</option>
-                {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                {destinationBranches.map((b: any) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.code})
+                  </option>
+                ))}
               </select>
+              {destinationBranches.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  No other active destination branches available.
+                </p>
+              )}
               <div className="relative">
                 <Search className="absolute left-3.5 top-3 lg:top-3.5 h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
                 <Input placeholder="Search inventory..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 lg:pl-12 h-10 lg:h-12 shadow-sm" />

@@ -56,6 +56,8 @@ export const authApi = {
   verifyDeviceCode: (requestId: string, authorizationCode: string) =>
     api.post('/auth/device/verify', { requestId, authorizationCode }),
 
+  getProfile: () => api.get('/auth/me'),
+
   logout: () => api.post('/auth/logout'),
 }
 

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Edit, MapPin, Store } from 'lucide-react'
+import { Plus, Edit, MapPin, Store, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 
 const Branches = () => {
@@ -100,7 +100,11 @@ const Branches = () => {
       toast.error('Branch Name and Code are required')
       return
     }
-    createMutation.mutate(newBranch)
+    const payload = { ...newBranch }
+    if (payload.code.trim().toUpperCase() === 'HQ') {
+      payload.managerId = 'none'
+    }
+    createMutation.mutate(payload)
   }
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -109,7 +113,11 @@ const Branches = () => {
       toast.error('Branch Name is required')
       return
     }
-    editMutation.mutate({ id: showEdit.id, data: editForm })
+    const payload = { ...editForm }
+    if (showEdit?.code === 'HQ') {
+      payload.managerId = 'none'
+    }
+    editMutation.mutate({ id: showEdit.id, data: payload })
   }
 
   const openEditModal = (branch: any) => {
@@ -166,7 +174,12 @@ const Branches = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {branch.manager ? (
+                      {branch.code === 'HQ' ? (
+                        <Badge variant="outline" className="border-primary/50 text-primary bg-primary/5 font-medium flex items-center gap-1.5 w-fit">
+                          <Shield className="w-3.5 h-3.5" />
+                          Admin Managed
+                        </Badge>
+                      ) : branch.manager ? (
                         <span className="text-sm">{branch.manager.firstName} {branch.manager.lastName}</span>
                       ) : (
                         <span className="text-xs text-muted-foreground italic">Unassigned</span>
@@ -227,18 +240,31 @@ const Branches = () => {
                 <Label>Contact Phone</Label>
                 <Input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
               </div>
-              <div className="space-y-2">
-                <Label>Branch Manager</Label>
-                <Select value={editForm.managerId} onValueChange={v => setEditForm({...editForm, managerId: v})}>
-                  <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-- Unassigned --</SelectItem>
-                    {availableManagers.map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {showEdit?.code === 'HQ' ? (
+                <div className="space-y-2">
+                  <Label>Branch Manager</Label>
+                  <div className="p-2.5 rounded-lg border border-primary/30 bg-primary/5 text-xs text-muted-foreground flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary shrink-0" />
+                    <div>
+                      <span className="font-semibold text-foreground block">Admin Managed</span>
+                      <span>Headquarters is hardcoded for administrator management only.</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Branch Manager</Label>
+                  <Select value={editForm.managerId} onValueChange={v => setEditForm({...editForm, managerId: v})}>
+                    <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- Unassigned --</SelectItem>
+                      {availableManagers.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setShowEdit(null)}>Cancel</Button>
@@ -278,18 +304,31 @@ const Branches = () => {
                 <Label>Contact Phone</Label>
                 <Input value={newBranch.phone} onChange={e => setNewBranch({...newBranch, phone: e.target.value})} />
               </div>
-              <div className="space-y-2">
-                <Label>Assign Manager (Optional)</Label>
-                <Select value={newBranch.managerId} onValueChange={v => setNewBranch({...newBranch, managerId: v})}>
-                  <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-- Unassigned --</SelectItem>
-                    {availableManagers.map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {newBranch.code.trim().toUpperCase() === 'HQ' ? (
+                <div className="space-y-2">
+                  <Label>Assign Manager</Label>
+                  <div className="p-2.5 rounded-lg border border-primary/30 bg-primary/5 text-xs text-muted-foreground flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary shrink-0" />
+                    <div>
+                      <span className="font-semibold text-foreground block">Admin Managed</span>
+                      <span>Headquarters is hardcoded for administrator management only.</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Assign Manager (Optional)</Label>
+                  <Select value={newBranch.managerId} onValueChange={v => setNewBranch({...newBranch, managerId: v})}>
+                    <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- Unassigned --</SelectItem>
+                      {availableManagers.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>

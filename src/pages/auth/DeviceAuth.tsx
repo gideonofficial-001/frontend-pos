@@ -37,6 +37,11 @@ const DeviceAuth = () => {
       localStorage.removeItem('deviceRequestId')
       toast.success('Device authorized successfully!')
 
+      if (data.user.role !== 'SUPER_ADMIN' && !data.user.branchId) {
+        navigate('/unassigned')
+        return
+      }
+
       switch (data.user.role) {
         case 'SUPER_ADMIN':
           navigate('/admin/dashboard')

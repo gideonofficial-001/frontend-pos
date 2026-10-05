@@ -129,6 +129,11 @@ const Login = () => {
         toast.success('Login successful!')
       }
 
+      if (user.role !== 'SUPER_ADMIN' && !user.branchId) {
+        navigate('/unassigned')
+        return
+      }
+
       switch (user.role) {
         case 'SUPER_ADMIN':
           navigate('/admin/dashboard')

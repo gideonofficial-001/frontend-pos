@@ -42,6 +42,7 @@ import Notifications from '@/pages/shared/Notifications'
 import Settings from '@/pages/shared/Settings'
 import NotFound from '@/pages/NotFound'
 import Closingstock from '@/pages/shared/Closingstock'
+import UnassignedBranch from '@/pages/shared/UnassignedBranch'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) => {
@@ -49,6 +50,11 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  // If user is not super admin and has no assigned branch, block access to protected branch routes
+  if (user && user.role !== UserRole.SUPER_ADMIN && !user.branchId) {
+    return <Navigate to="/unassigned" replace />
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role as UserRole)) {
@@ -66,10 +72,23 @@ const RoleRedirect = () => {
   const { isAuthenticated, user } = useAuthStore()
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role !== UserRole.SUPER_ADMIN && !user?.branchId) {
+    return <Navigate to="/unassigned" replace />
+  }
   if (user?.role === UserRole.SUPER_ADMIN) return <Navigate to="/admin/dashboard" replace />
   if (user?.role === UserRole.OVERALL_MANAGER) return <Navigate to="/manager/dashboard" replace />
   if (user?.role === UserRole.BRANCH_MANAGER) return <Navigate to="/branch/dashboard" replace />
   return <Navigate to="/login" replace />
+}
+
+// Route specifically for unassigned users
+const UnassignedRoute = () => {
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role === UserRole.SUPER_ADMIN || user?.branchId) {
+    return <Navigate to="/" replace />
+  }
+  return <UnassignedBranch />
 }
 
 function App() {
@@ -118,6 +137,7 @@ function App() {
         </Route>
 
         <Route path="/" element={<RoleRedirect />} />
+        <Route path="/unassigned" element={<UnassignedRoute />} />
 
         <Route element={<MainLayout />}>
           {/* Super Admin Routes */}
