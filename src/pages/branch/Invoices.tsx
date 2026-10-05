@@ -184,7 +184,7 @@ const Invoices = () => {
                 <p className="text-xs text-muted-foreground text-right mt-1">Due: {invoice.dueDate ? formatDate(invoice.dueDate) : 'On Receipt'}</p>
               </div>
 
-              {Number(invoice.balance) > 0 && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
+              {user?.role !== 'OVERALL_MANAGER' && Number(invoice.balance) > 0 && invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
                 <Button 
                   className="w-full mt-4" 
                   variant="default"

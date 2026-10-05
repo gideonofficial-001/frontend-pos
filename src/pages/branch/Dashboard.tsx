@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { reportsApi, notificationsApi, invoicesApi, inventoryApi } from '@/api'
 import { useAuthStore } from '@/store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +9,7 @@ import { ShoppingCart, TrendingUp, FileText, AlertTriangle, Flame } from 'lucide
 
 const BranchDashboard = () => {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
 
   // 1. Existing general stats
   const { data: stats } = useQuery({
@@ -73,14 +75,37 @@ const BranchDashboard = () => {
       </div>
 
       {pendingData && (pendingData.pendingTransfers > 0 || pendingData.pendingExpenses > 0) && (
-        <Card className="border-yellow-200 dark:border-emerald-500/40 bg-yellow-50 dark:bg-emerald-950/20">
+        <Card 
+          className="border-yellow-200 dark:border-emerald-500/40 bg-yellow-50 dark:bg-emerald-950/20 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => navigate(pendingData.pendingTransfers > 0 ? '/branch/transfers' : '/branch/expenses')}
+        >
           <CardContent className="flex items-center gap-4 py-4">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-emerald-400" />
-            <div>
-              <p className="font-medium text-yellow-800 dark:text-emerald-200">
-                Pending items: {pendingData.pendingTransfers > 0 && `${pendingData.pendingTransfers} transfers`}
-                {pendingData.pendingExpenses > 0 && ` ${pendingData.pendingExpenses} expenses`}
-              </p>
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-emerald-400 shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-yellow-800 dark:text-emerald-200">
+                  Action required on pending items
+                </p>
+                <span className="text-xs text-primary font-semibold hover:underline">View details →</span>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-yellow-700 dark:text-emerald-300">
+                {pendingData.pendingTransfers > 0 && (
+                  <span 
+                    className="hover:underline font-medium bg-yellow-200/50 dark:bg-emerald-900/40 px-2 py-0.5 rounded cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate('/branch/transfers') }}
+                  >
+                    {pendingData.pendingTransfers} transfers
+                  </span>
+                )}
+                {pendingData.pendingExpenses > 0 && (
+                  <span 
+                    className="hover:underline font-medium bg-yellow-200/50 dark:bg-emerald-900/40 px-2 py-0.5 rounded cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate('/branch/expenses') }}
+                  >
+                    {pendingData.pendingExpenses} expenses
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

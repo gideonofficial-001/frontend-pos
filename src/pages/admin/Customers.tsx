@@ -100,10 +100,12 @@ const Customers = () => {
           <h1 className="text-2xl font-bold">Customers</h1>
           <p className="text-muted-foreground">Manage your customer database</p>
         </div>
-        <Button onClick={() => { setEditCustomer(null); setFormData({ name: '', phone: '', email: '', address: '', notes: '', creditLimit: '' }); setShowCreate(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Customer
-        </Button>
+        {user?.role === 'SUPER_ADMIN' && (
+          <Button onClick={() => { setEditCustomer(null); setFormData({ name: '', phone: '', email: '', address: '', notes: '', creditLimit: '' }); setShowCreate(true); }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Customer
+          </Button>
+        )}
       </div>
 
       <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} className="max-w-sm" />
@@ -139,7 +141,7 @@ const Customers = () => {
                 </div>
               )}
 
-              {isAdmin && (
+              {user?.role === 'SUPER_ADMIN' && (
                 <div className="flex gap-2 mt-4 pt-4 border-t">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditOpen(customer)}>
                     <Edit2 className="w-3 h-3 mr-2" /> Edit

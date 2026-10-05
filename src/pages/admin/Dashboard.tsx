@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { reportsApi, notificationsApi } from '@/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react'
 
 const AdminDashboard = () => {
+  const navigate = useNavigate()
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -43,18 +45,52 @@ const AdminDashboard = () => {
 
       {/* Pending Approvals Alert */}
       {pendingData && pendingData.total > 0 && (
-        <Card className="border-yellow-200 dark:border-emerald-500/40 bg-yellow-50 dark:bg-emerald-950/20">
+        <Card 
+          className="border-yellow-200 dark:border-emerald-500/40 bg-yellow-50 dark:bg-emerald-950/20 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => navigate('/notifications?tab=approvals')}
+        >
           <CardContent className="flex items-center gap-4 py-4">
-            <Bell className="w-5 h-5 text-yellow-600 dark:text-emerald-400" />
-            <div>
-              <p className="font-medium text-yellow-800 dark:text-emerald-200">
-                You have {pendingData.total} pending approval{pendingData.total > 1 ? 's' : ''}
-              </p>
-              <div className="flex gap-3 mt-1 text-sm text-yellow-700 dark:text-emerald-300">
-                {pendingData.pendingReturns > 0 && <span>{pendingData.pendingReturns} returns</span>}
-                {pendingData.pendingDevices > 0 && <span>{pendingData.pendingDevices} devices</span>}
-                {pendingData.pendingTransfers > 0 && <span>{pendingData.pendingTransfers} transfers</span>}
-                {pendingData.pendingExpenses > 0 && <span>{pendingData.pendingExpenses} expenses</span>}
+            <Bell className="w-5 h-5 text-yellow-600 dark:text-emerald-400 shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-yellow-800 dark:text-emerald-200">
+                  You have {pendingData.total} pending approval{pendingData.total > 1 ? 's' : ''}
+                </p>
+                <span className="text-xs text-primary font-semibold hover:underline">Review all →</span>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-yellow-700 dark:text-emerald-300">
+                {pendingData.pendingReturns > 0 && (
+                  <span 
+                    className="hover:underline font-medium bg-yellow-200/50 dark:bg-emerald-900/40 px-2 py-0.5 rounded cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate('/admin/returns') }}
+                  >
+                    {pendingData.pendingReturns} returns
+                  </span>
+                )}
+                {pendingData.pendingDevices > 0 && (
+                  <span 
+                    className="hover:underline font-medium bg-yellow-200/50 dark:bg-emerald-900/40 px-2 py-0.5 rounded cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate('/admin/devices') }}
+                  >
+                    {pendingData.pendingDevices} devices
+                  </span>
+                )}
+                {pendingData.pendingTransfers > 0 && (
+                  <span 
+                    className="hover:underline font-medium bg-yellow-200/50 dark:bg-emerald-900/40 px-2 py-0.5 rounded cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate('/admin/transfers') }}
+                  >
+                    {pendingData.pendingTransfers} transfers
+                  </span>
+                )}
+                {pendingData.pendingExpenses > 0 && (
+                  <span 
+                    className="hover:underline font-medium bg-yellow-200/50 dark:bg-emerald-900/40 px-2 py-0.5 rounded cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate('/notifications?tab=approvals') }}
+                  >
+                    {pendingData.pendingExpenses} expenses
+                  </span>
+                )}
               </div>
             </div>
           </CardContent>

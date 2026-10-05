@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDateTime, formatRelativeTime } from '@/lib/utils'
+import { useAuthStore } from '@/store'
 import { toast } from 'sonner'
 import {
   RotateCcw,
@@ -43,6 +44,8 @@ const statusConfig: Record<string, { label: string; variant: 'warning' | 'succes
 }
 
 export default function AdminReturns() {
+  const { user } = useAuthStore()
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [search, setSearch] = useState('')
@@ -183,8 +186,8 @@ export default function AdminReturns() {
                       </span>
                     </div>
 
-                    {/* Action buttons — only for pending */}
-                    {isPending && (
+                    {/* Action buttons — only for pending and SUPER_ADMIN */}
+                    {isPending && isSuperAdmin && (
                       <div className="flex gap-2 shrink-0">
                         <Button
                           size="sm"

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi, devicesApi, returnsApi, expensesApi } from '@/api'
 import { useAuthStore } from '@/store'
 import { UserRole } from '@/types'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,7 @@ import {
   Package, Building2, Clock, MapPin, Copy, Mail, MailX,
   ShieldCheck, Trash2, ArrowRightLeft,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,27 +27,66 @@ function extractAuthCode(message: string): string | null {
   return match ? match[1] : null
 }
 
-// Maps notification entityType + type to the correct route
+// Maps notification entityType + type to the correct route based on user role
 function getNotificationRoute(notif: any, userRole: string): string | null {
   const type: string = notif.type ?? ''
   const entity: string = notif.entityType ?? ''
+  const entityId: string | undefined = notif.entityId
 
+  const isAdmin = userRole === UserRole.SUPER_ADMIN
+  const isManager = userRole === UserRole.OVERALL_MANAGER
+
+  // Transfers - Overall manager has no access to transfers
   if (type.startsWith('TRANSFER_') || entity === 'Transfer') {
-    if (userRole === UserRole.SUPER_ADMIN) return '/admin/transfers'
-    return '/branch/transfers'
+    if (isAdmin) return entityId ? `/admin/transfers?id=${entityId}` : '/admin/transfers'
+    if (userRole === UserRole.BRANCH_MANAGER) return entityId ? `/branch/transfers?id=${entityId}` : '/branch/transfers'
+    return null
   }
+
+  // Returns
   if (type.startsWith('RETURN_') || entity === 'Return') {
-    return '/branch/returns'
+    return (isAdmin || isManager) ? '/admin/returns' : '/branch/returns'
   }
+
+  // Invoices (type INVOICE_CREATED, entity Invoice or Sale)
+  if (type === 'INVOICE_CREATED' || entity === 'Invoice' || (entity === 'Sale' && type === 'INVOICE_CREATED')) {
+    return (isAdmin || isManager) ? '/admin/invoices' : '/branch/invoices'
+  }
+
+  // Sales (other than invoice)
+  if (entity === 'Sale') {
+    return (isAdmin || isManager) ? '/admin/sales-history' : '/branch/sales-history'
+  }
+
+  // Expenses
   if (type.startsWith('EXPENSE_') || entity === 'Expense') {
+    if (isAdmin || isManager) {
+      return '/notifications?tab=approvals'
+    }
     return '/branch/expenses'
   }
+
+  // Device Authentication
   if (type === 'DEVICE_AUTH' || entity === 'Device') {
-    return '/notifications' // stays on this page — admin handles it here
+    if (isAdmin) return '/admin/devices'
+    return '/notifications?tab=approvals'
   }
-  if (type === 'INVOICE_CREATED' || entity === 'Invoice') {
-    return '/branch/invoices'
+
+  // Low Stock / Inventory
+  if (type === 'LOW_STOCK' || entity === 'Inventory') {
+    return '/inventory'
   }
+
+  // Users
+  if (entity === 'User') {
+    if (isAdmin) return '/admin/users'
+  }
+
+  // Branches
+  if (entity === 'Branch') {
+    if (isAdmin) return '/admin/branches'
+  }
+
   return null
 }
 
@@ -57,7 +96,30 @@ const Notifications = () => {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('notifications')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<'notifications' | 'approvals'>(
+    tabParam === 'approvals' ? 'approvals' : 'notifications'
+  )
+
+  useEffect(() => {
+    if (tabParam === 'approvals') {
+      setActiveTab('approvals')
+    } else if (tabParam === 'notifications') {
+      setActiveTab('notifications')
+    }
+  }, [tabParam])
+
+  const handleTabChange = (val: string) => {
+    const next = val as 'notifications' | 'approvals'
+    setActiveTab(next)
+    if (next === 'approvals') {
+      setSearchParams({ tab: 'approvals' })
+    } else {
+      setSearchParams({})
+    }
+  }
+
   const isAdmin = user?.role === UserRole.SUPER_ADMIN
   const isManager = user?.role === UserRole.OVERALL_MANAGER
 
@@ -211,10 +273,14 @@ const Notifications = () => {
     if (notif.status === 'UNREAD') {
       markReadMutation.mutate(notif.id)
     }
-    // Navigate if there's a target page
+    // Navigate if there's a target page or tab
     const route = getNotificationRoute(notif, user?.role ?? '')
-    if (route && route !== '/notifications') {
-      navigate(route)
+    if (route) {
+      if (route.includes('tab=approvals')) {
+        handleTabChange('approvals')
+      } else if (route !== '/notifications') {
+        navigate(route)
+      }
     }
   }
 
@@ -233,7 +299,7 @@ const Notifications = () => {
       </div>
 
       {(isAdmin || isManager) && (
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList>
             <TabsTrigger value="notifications">All Notifications</TabsTrigger>
             <TabsTrigger value="approvals">
@@ -256,7 +322,7 @@ const Notifications = () => {
               const authCode =
                 notif.type === 'DEVICE_AUTH' ? extractAuthCode(notif.message) : null
               const route = getNotificationRoute(notif, user?.role ?? '')
-              const isNavigable = route && route !== '/notifications'
+              const isNavigable = Boolean(route)
 
               return (
                 <Card
@@ -381,23 +447,29 @@ const Notifications = () => {
                             <span>{ret.sale?.branch?.name ?? 'Unknown branch'}</span>
                           </div>
                         </div>
-                        {rejectingId !== ret.id && (
-                          <div className="flex gap-2 shrink-0">
-                            <Button
-                              size="sm" variant="outline"
-                              disabled={rejectReturnMutation.isPending || approveReturnMutation.isPending}
-                              onClick={() => { setRejectingId(ret.id); setRejectReason('') }}
-                            >
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              disabled={approveReturnMutation.isPending || rejectReturnMutation.isPending}
-                              onClick={() => approveReturnMutation.mutate(ret.id)}
-                            >
-                              Approve
-                            </Button>
-                          </div>
+                        {isAdmin ? (
+                          rejectingId !== ret.id && (
+                            <div className="flex gap-2 shrink-0">
+                              <Button
+                                size="sm" variant="outline"
+                                disabled={rejectReturnMutation.isPending || approveReturnMutation.isPending}
+                                onClick={() => { setRejectingId(ret.id); setRejectReason('') }}
+                              >
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={approveReturnMutation.isPending || rejectReturnMutation.isPending}
+                                onClick={() => approveReturnMutation.mutate(ret.id)}
+                              >
+                                Approve
+                              </Button>
+                            </div>
+                          )
+                        ) : (
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
+                            Pending Review
+                          </span>
                         )}
                       </div>
 
@@ -550,17 +622,23 @@ const Notifications = () => {
                             KES {Number(expense.amount).toLocaleString()} · {expense.branch?.name}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm" variant="outline"
-                            onClick={() => rejectExpenseMutation.mutate({ id: expense.id, reason: 'Rejected by admin' })}
-                          >
-                            Reject
-                          </Button>
-                          <Button size="sm" onClick={() => approveExpenseMutation.mutate(expense.id)}>
-                            Approve
-                          </Button>
-                        </div>
+                        {isAdmin ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => rejectExpenseMutation.mutate({ id: expense.id, reason: 'Rejected by admin' })}
+                            >
+                              Reject
+                            </Button>
+                            <Button size="sm" onClick={() => approveExpenseMutation.mutate(expense.id)}>
+                              Approve
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
+                            Pending Review
+                          </span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

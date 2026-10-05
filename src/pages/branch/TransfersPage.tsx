@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api, { branchesApi } from '@/api';
 import { useAuthStore } from '@/store';
@@ -50,9 +51,15 @@ const itemStatusConfig = {
 
 export default function TransfersPage() {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const targetId = searchParams.get('id');
+  const tabParam = searchParams.get('tab');
+
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'history'>('incoming');
+  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'history'>(
+    tabParam === 'outgoing' || tabParam === 'history' ? tabParam : 'incoming'
+  );
 
   // ── History Filters & Pagination State ────────────────────
   const [historyPage, setHistoryPage] = useState(1);
@@ -77,10 +84,41 @@ export default function TransfersPage() {
     },
   });
 
-  const isIncoming = (t: Transfer) => t.toBranch.id === user?.branchId;
-  const isOutgoing = (t: Transfer) => t.fromBranch.id === user?.branchId;
+  const isIncoming = (t: Transfer) => {
+    if (user?.role === 'SUPER_ADMIN') {
+      if (!user?.branchId) return true;
+      return t.toBranch.id === user.branchId || t.fromBranch.id !== user.branchId;
+    }
+    return t.toBranch.id === user?.branchId;
+  };
+
+  const isOutgoing = (t: Transfer) => {
+    if (user?.role === 'SUPER_ADMIN') {
+      if (!user?.branchId) return true;
+      return t.fromBranch.id === user.branchId;
+    }
+    return t.fromBranch.id === user?.branchId;
+  };
+
   const isActive   = (t: Transfer) => t.status === 'PENDING' || t.status === 'PARTIAL';
   const isHistory  = (t: Transfer) => t.status === 'COMPLETED' || t.status === 'CANCELLED';
+
+  // Auto-open transfer if ID passed in URL
+  useEffect(() => {
+    if (targetId && allTransfers.length > 0) {
+      const match = allTransfers.find((t: Transfer) => t.id === targetId);
+      if (match) {
+        setSelectedTransfer(match);
+        if (match.status === 'COMPLETED' || match.status === 'CANCELLED') {
+          setActiveTab('history');
+        } else if (isIncoming(match)) {
+          setActiveTab('incoming');
+        } else {
+          setActiveTab('outgoing');
+        }
+      }
+    }
+  }, [targetId, allTransfers]);
 
   const tabTransfers = {
     incoming: allTransfers.filter((t) => isIncoming(t) && isActive(t)),
@@ -128,11 +166,12 @@ export default function TransfersPage() {
 
   const canRespond = (t: Transfer) => {
     const isManager = user?.role === 'BRANCH_MANAGER' || user?.role === 'SUPER_ADMIN';
-    return isIncoming(t) && isActive(t) && isManager;
+    const canManageDest = user?.role === 'SUPER_ADMIN' || t.toBranch.id === user?.branchId;
+    return canManageDest && isActive(t) && isManager;
   };
 
   const canCancel = (t: Transfer) =>
-    isOutgoing(t) && t.status === 'PENDING' &&
+    (isOutgoing(t) || user?.role === 'SUPER_ADMIN') && t.status === 'PENDING' &&
     (t.requestedBy.id === user?.id || user?.role === 'SUPER_ADMIN');
 
   // 🚀 ADDED: Helper to translate backend LPG data into beautiful labels

@@ -172,7 +172,7 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
                 <option value="">-- Select Destination Branch --</option>
                 {destinationBranches.map((b: any) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.code})
+                    {b.name}
                   </option>
                 ))}
               </select>
