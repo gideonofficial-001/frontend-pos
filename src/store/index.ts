@@ -42,6 +42,7 @@ interface CartState {
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   updateItemDiscount: (productId: string, discount: number) => void
+  updateItemCylinder: (productId: string, cylinderId?: string, cylinderSerial?: string) => void
   setCustomerInfo: (name: string, phone: string) => void
   clearCart: () => void
   parkCurrentCart: (label?: string) => boolean
@@ -131,6 +132,16 @@ export const useCartStore = create<CartState>()(
               total: item.unitPrice * item.quantity - safeDiscount,
             }
           }),
+        })
+      },
+
+      updateItemCylinder: (productId, cylinderId, cylinderSerial) => {
+        set({
+          items: get().items.map((item) =>
+            item.productId === productId
+              ? { ...item, cylinderId, cylinderSerial }
+              : item,
+          ),
         })
       },
 

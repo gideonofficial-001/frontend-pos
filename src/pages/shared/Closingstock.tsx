@@ -1,15 +1,19 @@
 import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { closingStockApi, branchesApi } from '@/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { closingStockApi, branchesApi, branchClosingsApi } from '@/api'
 import { useAuthStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Clock, Printer, Store, XCircle } from 'lucide-react'
+import {
+  ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Clock, Printer, Store,
+  Banknote, PackageCheck, AlertCircle, FileText, Check, AlertTriangle, ShieldCheck
+} from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -31,38 +35,78 @@ const buildWeek = (anchorDate: Date): Date[] => {
   return days
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
 export default function ClosingStock() {
   const { user } = useAuthStore()
+  const queryClient = useQueryClient()
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'OVERALL_MANAGER'
 
-  // Anchor = most recent day of the visible 7-day window
-  const [anchor, setAnchor] = useState<Date>(() => {
-    const t = new Date(); t.setHours(0, 0, 0, 0); return t
-  })
+  // Tab switching
+  const [activeTab, setActiveTab] = useState<'reconciliation' | 'snapshots'>('reconciliation')
+
+  // Selected branch
   const [selectedBranchId, setSelectedBranchId] = useState<string>(
     user?.role === 'BRANCH_MANAGER' ? (user.branchId || '') : ''
   )
+
+  // Reconciliation form states
+  const [openingCashInput, setOpeningCashInput] = useState<string>('')
+  const [closingCashInput, setClosingCashInput] = useState<string>('')
+  const [closingNotesInput, setClosingNotesInput] = useState<string>('')
+
+  // Snapshots states
+  const [anchor, setAnchor] = useState<Date>(() => {
+    const t = new Date(); t.setHours(0, 0, 0, 0); return t
+  })
   const [jumpDate, setJumpDate] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const today = useMemo(() => { const t = new Date(); t.setHours(0,0,0,0); return t }, [])
   const week  = useMemo(() => buildWeek(anchor), [anchor])
-  const startDate = toISODate(week[6])   // oldest in window
-  const endDate   = toISODate(week[0])   // newest in window
+  const startDate = toISODate(week[6])
+  const endDate   = toISODate(week[0])
 
-  // ── Fetch available branches ───────────────────────────────────────────
+  // ── Branches Query ────────────────────────────────────────────────────────
   const { data: branches } = useQuery({
     queryKey: ['branches'],
     queryFn:  () => branchesApi.getAll().then(r => r.data),
     enabled:  isAdmin,
   })
 
-  // ── Fetch dates that have snapshots in current window ─────────────────
+  // ── Today Summary Query (Cash drawer reconciliation) ──────────────────────
+  const { data: todaySummary, isLoading: loadingTodaySummary } = useQuery({
+    queryKey: ['branch-closing-today', selectedBranchId],
+    queryFn:  () => branchClosingsApi.getTodaySummary(selectedBranchId).then(r => r.data),
+    enabled:  !!selectedBranchId,
+  })
+
+  // ── History Query (Past closings) ─────────────────────────────────────────
+  const { data: closingHistory = [], isLoading: loadingHistory } = useQuery({
+    queryKey: ['branch-closing-history', selectedBranchId],
+    queryFn:  () => branchClosingsApi.getHistory({ branchId: selectedBranchId }).then(r => r.data),
+    enabled:  !!selectedBranchId,
+  })
+
+  // ── Submit Closing Mutation ───────────────────────────────────────────────
+  const submitClosingMutation = useMutation({
+    mutationFn: (data: { branchId: string; openingCash: number; closingCash: number; notes?: string }) =>
+      branchClosingsApi.submitClosing(data),
+    onSuccess: () => {
+      toast.success('Branch daily closing submitted successfully!')
+      setClosingCashInput('')
+      setClosingNotesInput('')
+      queryClient.invalidateQueries({ queryKey: ['branch-closing-today', selectedBranchId] })
+      queryClient.invalidateQueries({ queryKey: ['branch-closing-history', selectedBranchId] })
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to submit branch closing')
+    },
+  })
+
+  // ── Snapshots Query ───────────────────────────────────────────────────────
   const { data: snapshotDates = [] } = useQuery({
     queryKey: ['closing-stock-dates', selectedBranchId, startDate, endDate],
     queryFn:  () => closingStockApi.getDates(selectedBranchId, startDate, endDate).then(r => r.data),
-    enabled:  !!selectedBranchId,
+    enabled:  !!selectedBranchId && activeTab === 'snapshots',
   })
 
   const snapshotMap = useMemo(() => {
@@ -71,14 +115,13 @@ export default function ClosingStock() {
     return m
   }, [snapshotDates])
 
-  // ── Fetch snapshot detail ─────────────────────────────────────────────
-  const { data: snapshot, isLoading: loadingSnapshot } = useQuery({
+  const { data: snapshot } = useQuery({
     queryKey: ['closing-stock-snapshot', selectedBranchId, selectedDate],
     queryFn:  () => closingStockApi.getSnapshot(selectedBranchId, selectedDate!).then(r => r.data),
-    enabled:  !!selectedBranchId && !!selectedDate,
+    enabled:  !!selectedBranchId && !!selectedDate && activeTab === 'snapshots',
   })
 
-  // ── Navigation ────────────────────────────────────────────────────────
+  // Navigation for snapshots
   const goBack = () => {
     const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d)
   }
@@ -93,10 +136,9 @@ export default function ClosingStock() {
     setAnchor(d)
     setJumpDate('')
   }
-
   const canGoForward = anchor < today
 
-  // ── Print handler ─────────────────────────────────────────────────────
+  // Print handler for snapshots
   const handlePrint = () => {
     if (!snapshot) return
     const win = window.open('', '_blank', 'width=800,height=600')
@@ -156,13 +198,13 @@ export default function ClosingStock() {
     win.document.close()
   }
 
-  // ── Branch not selected guard ─────────────────────────────────────────
+  // Branch not selected guard for admin
   if (isAdmin && !selectedBranchId) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Closing Stock</h1>
-          <p className="text-muted-foreground">Automated midnight inventory records</p>
+          <h1 className="text-2xl font-bold">Closing & Reconciliation</h1>
+          <p className="text-muted-foreground">Select a branch to view cash drawer reconciliations or midnight stock records</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {branches?.map((b: any) => (
@@ -187,8 +229,45 @@ export default function ClosingStock() {
 
   const activeBranch = branches?.find((b: any) => b.id === selectedBranchId)
 
+  // Reconciliation calculations
+  const calc = todaySummary?.calculated || {
+    openingCash: 0,
+    cashSales: 0,
+    mpesaSales: 0,
+    invoiceSales: 0,
+    totalExpenses: 0,
+    totalRefunds: 0,
+    expectedCash: 0,
+  }
+
+  const isClosedToday = todaySummary?.existingClosing?.status === 'CLOSED'
+  const activeOpeningCash = openingCashInput !== '' ? Number(openingCashInput) : calc.openingCash
+  const activeExpectedCash = Math.round((activeOpeningCash + calc.cashSales - calc.totalExpenses - calc.totalRefunds) * 100) / 100
+  const activeClosingCash = closingCashInput !== '' ? Number(closingCashInput) : null
+  const activeVariance = activeClosingCash !== null ? Math.round((activeClosingCash - activeExpectedCash) * 100) / 100 : 0
+
+  const handleClosingSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (activeClosingCash === null || isNaN(activeClosingCash)) {
+      toast.error('Please enter the actual physical cash counted in the drawer')
+      return
+    }
+
+    if (activeVariance !== 0 && !closingNotesInput.trim()) {
+      toast.error(`A note explaining the cash variance of ${formatCurrency(activeVariance)} is required`)
+      return
+    }
+
+    submitClosingMutation.mutate({
+      branchId: selectedBranchId,
+      openingCash: activeOpeningCash,
+      closingCash: activeClosingCash,
+      notes: closingNotesInput.trim() || undefined,
+    })
+  }
+
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-12">
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -199,11 +278,11 @@ export default function ClosingStock() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
-            <h1 className="text-2xl font-bold">Closing Stock</h1>
+            <h1 className="text-2xl font-bold">Branch Closing & Reconciliation</h1>
           </div>
           {activeBranch && (
             <p className="text-muted-foreground ml-7">
-              {activeBranch.name} &bull; Midnight Inventory Snapshots
+              {activeBranch.name} &bull; Operational Cash Drawer & Stock Snapshots
             </p>
           )}
         </div>
@@ -211,7 +290,7 @@ export default function ClosingStock() {
         {/* Branch switcher for admin */}
         {isAdmin && (
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-52">
               <Store className="w-4 h-4 mr-2 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
@@ -222,220 +301,483 @@ export default function ClosingStock() {
         )}
       </div>
 
-      {/* ── Midnight Automation Info Banner ── */}
-      <div className="flex items-start sm:items-center gap-3 p-3.5 bg-muted/40 border border-border/80 rounded-xl text-xs text-muted-foreground">
-        <Clock className="w-4 h-4 text-primary shrink-0 mt-0.5 sm:mt-0" />
-        <div>
-          <span className="font-semibold text-foreground">Automatic Midnight Capture: </span>
-          The system captures inventory automatically every night at <strong>00:00 (Midnight)</strong>. Any transfers, sales, or stock adjustments completed past midnight are not included in that day&apos;s closing stock.
-        </div>
+      {/* ── Tabs ── */}
+      <div className="flex gap-2 border-b pb-1">
+        <Button
+          variant={activeTab === 'reconciliation' ? 'default' : 'ghost'}
+          className="gap-2"
+          onClick={() => setActiveTab('reconciliation')}
+        >
+          <Banknote className="w-4 h-4" />
+          Cash Drawer Reconciliation
+        </Button>
+        <Button
+          variant={activeTab === 'snapshots' ? 'default' : 'ghost'}
+          className="gap-2"
+          onClick={() => setActiveTab('snapshots')}
+        >
+          <PackageCheck className="w-4 h-4" />
+          Midnight Inventory Snapshots
+        </Button>
       </div>
 
-      {/* ── Controls: navigation + jump ── */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between bg-card border rounded-lg p-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goBack}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Prev 7 Days
-          </Button>
-          <Button variant="outline" size="sm" onClick={goForward} disabled={!canGoForward}>
-            Next 7 Days <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-          <span className="text-sm text-muted-foreground hidden sm:block">
-            {fmtShort(week[6])} — {fmtShort(week[0])}
-          </span>
-        </div>
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB 1: CASH DRAWER RECONCILIATION & CLOSING                            */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'reconciliation' && (
+        <div className="space-y-6">
 
-        <div className="flex items-center gap-2">
-          <Input type="date" value={jumpDate} onChange={e => setJumpDate(e.target.value)}
-            className="h-9 w-40 text-sm" max={toISODate(today)} />
-          <Button size="sm" variant="secondary" onClick={handleJump} disabled={!jumpDate}>
-            Jump to Date
-          </Button>
-        </div>
-      </div>
+          {/* Today's Reconciliation Card */}
+          <Card className="border-primary/20 shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Banknote className="w-5 h-5 text-emerald-600" />
+                  Today's Cash Drawer Reconciliation — {fmt(today)}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Reconciles physical cash in drawer against sales cash receipts, approved expenses, and refunds.
+                </p>
+              </div>
+              {isClosedToday ? (
+                <Badge className="bg-emerald-600 text-white gap-1 px-3 py-1 text-xs">
+                  <ShieldCheck className="w-3.5 h-3.5" /> CLOSED FOR TODAY
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-amber-600 border-amber-300 dark:border-emerald-500/40 gap-1 px-3 py-1 text-xs">
+                  <Clock className="w-3.5 h-3.5" /> OPEN / IN PROGRESS
+                </Badge>
+              )}
+            </CardHeader>
 
-      {/* ── 7-day list ── */}
-      <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="font-bold">DATE</TableHead>
-              <TableHead className="font-bold hidden sm:table-cell">DAY</TableHead>
-              <TableHead className="font-bold text-center">STATUS</TableHead>
-              <TableHead className="font-bold hidden md:table-cell">PRODUCTS</TableHead>
-              <TableHead className="font-bold hidden lg:table-cell">RECORDED AT</TableHead>
-              <TableHead className="font-bold text-right">ACTION</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {week.map((day) => {
-              const isoDay  = toISODate(day)
-              const snap    = snapshotMap.get(isoDay)
-              const isToday = isoDay === toISODate(today)
+            <CardContent className="space-y-6">
+              {loadingTodaySummary ? (
+                <p className="text-center py-8 text-muted-foreground">Loading today's cash records...</p>
+              ) : (
+                <>
+                  {/* Key Financial Metric Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                      <p className="text-xs text-muted-foreground font-semibold uppercase">Opening Cash</p>
+                      <p className="text-lg font-bold mt-1">{formatCurrency(activeOpeningCash)}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Start of day float</p>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
+                      <p className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold uppercase">Cash Received</p>
+                      <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mt-1">+{formatCurrency(calc.cashSales)}</p>
+                      <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">From cash sales & invoices</p>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-amber-50/50 dark:bg-emerald-950/20 border-amber-200 dark:border-emerald-800">
+                      <p className="text-xs text-amber-800 dark:text-emerald-300 font-semibold uppercase">Expenses Paid</p>
+                      <p className="text-lg font-bold text-amber-700 dark:text-emerald-300 mt-1">-{formatCurrency(calc.totalExpenses)}</p>
+                      <p className="text-[11px] text-amber-700/80 dark:text-emerald-400 mt-0.5">Approved cash payouts</p>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                      <p className="text-xs text-red-800 dark:text-red-300 font-semibold uppercase">Refunds Given</p>
+                      <p className="text-lg font-bold text-red-700 dark:text-red-300 mt-1">-{formatCurrency(calc.totalRefunds)}</p>
+                      <p className="text-[11px] text-red-700/80 dark:text-red-400 mt-0.5">Approved cash returns</p>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-slate-900 text-white">
+                      <p className="text-xs text-slate-300 font-semibold uppercase">Expected in Drawer</p>
+                      <p className="text-lg font-black text-white mt-1">{formatCurrency(activeExpectedCash)}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Float + Inflows - Outflows</p>
+                    </div>
+                  </div>
 
-              return (
-                <TableRow
-                  key={isoDay}
-                  className={`transition-colors ${snap ? 'cursor-pointer hover:bg-muted/20' : ''}`}
-                  onClick={() => snap && setSelectedDate(isoDay)}
-                >
-                  <TableCell className="font-semibold">
-                    {isToday
-                      ? <span className="text-primary font-bold">Today</span>
-                      : fmtShort(day)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground hidden sm:table-cell">
-                    {day.toLocaleDateString('en-GB', { weekday: 'long' })}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {isToday ? (
-                      <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50/50 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800 gap-1 text-xs">
-                        <Clock className="w-3 h-3" /> Captures at Midnight
-                      </Badge>
-                    ) : snap ? (
-                      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-none gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Captured
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground gap-1">
-                        <XCircle className="w-3 h-3" /> No Record
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground hidden md:table-cell">
-                    {snap ? `${snap.productCount} products` : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">
-                    {isToday ? (
-                      <span className="text-muted-foreground italic">Scheduled at 00:00</span>
-                    ) : snap ? (
-                      <span className="flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3" />
-                        {new Date(snap.recordedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                      {snap ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs hover:bg-primary/10 hover:text-primary"
-                          onClick={() => setSelectedDate(isoDay)}
-                        >
-                          View <ChevronRight className="w-3 h-3 ml-1" />
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground pr-2">—</span>
+                  {/* Non-cash Reference Badges */}
+                  <div className="flex flex-wrap gap-3 p-3 bg-muted/30 rounded-lg text-xs">
+                    <span className="font-semibold text-muted-foreground">Other Revenue Handled Today (Excluded from Cash Drawer):</span>
+                    <Badge variant="secondary" className="gap-1 font-mono">
+                      M-Pesa Payments: <strong>{formatCurrency(calc.mpesaSales)}</strong> (Safaricom Till/Paybill)
+                    </Badge>
+                    <Badge variant="secondary" className="gap-1 font-mono">
+                      Invoice Debt Issued: <strong>{formatCurrency(calc.invoiceSales)}</strong> (Credit Uncollected)
+                    </Badge>
+                  </div>
+
+                  {/* If Already Closed Today */}
+                  {isClosedToday ? (
+                    <div className="p-5 border rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-600 space-y-3">
+                      <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200 font-bold text-base">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        Cash Reconciliation Completed & Submitted
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm pt-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase">Expected Closing Cash</p>
+                          <p className="font-bold text-foreground text-base mt-0.5">{formatCurrency(Number(todaySummary?.existingClosing?.expectedCash || 0))}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase">Actual Cash Counted</p>
+                          <p className="font-bold text-foreground text-base mt-0.5">{formatCurrency(Number(todaySummary?.existingClosing?.closingCash || 0))}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase">Variance</p>
+                          <p className={`font-bold text-base mt-0.5 ${
+                            Number(todaySummary?.existingClosing?.variance || 0) === 0
+                              ? 'text-emerald-600'
+                              : Number(todaySummary?.existingClosing?.variance || 0) < 0
+                              ? 'text-red-600'
+                              : 'text-amber-600'
+                          }`}>
+                            {formatCurrency(Number(todaySummary?.existingClosing?.variance || 0))}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase">Closed By</p>
+                          <p className="font-semibold text-foreground text-sm mt-0.5">
+                            {todaySummary?.existingClosing?.submittedBy
+                              ? `${todaySummary.existingClosing.submittedBy.firstName} ${todaySummary.existingClosing.submittedBy.lastName}`
+                              : 'Manager'}
+                          </p>
+                        </div>
+                      </div>
+                      {todaySummary?.existingClosing?.notes && (
+                        <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800/60">
+                          <p className="text-xs text-muted-foreground font-semibold uppercase">Reconciliation Reason / Notes:</p>
+                          <p className="text-sm font-medium mt-0.5 text-foreground">{todaySummary.existingClosing.notes}</p>
+                        </div>
                       )}
                     </div>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </div>
+                  ) : (
+                    /* Submission Form */
+                    <form onSubmit={handleClosingSubmit} className="space-y-4 p-5 border rounded-xl bg-card">
+                      <h3 className="font-bold text-sm uppercase tracking-wide text-foreground">
+                        Count & Submit Closing Cash
+                      </h3>
 
-      {/* ── Snapshot Detail Modal ── */}
-      <Dialog open={!!selectedDate} onOpenChange={(o) => !o && setSelectedDate(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>
-                Midnight Closing Stock — {selectedDate ? fmtShort(new Date(selectedDate)) : ''}
-              </DialogTitle>
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white mr-6"
-                size="sm"
-                onClick={handlePrint}
-                disabled={!snapshot}
-              >
-                <Printer className="w-4 h-4 mr-2" /> Print
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-muted-foreground">Opening Cash Float (KES)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder={String(calc.openingCash)}
+                            value={openingCashInput}
+                            onChange={(e) => setOpeningCashInput(e.target.value)}
+                            className="h-10 text-sm font-mono"
+                          />
+                          <p className="text-[11px] text-muted-foreground">Float from previous closing or start of day</p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground">
+                            Actual Cash Counted in Drawer (KES) <span className="text-red-500">*</span>
+                          </label>
+                          <Input
+                            type="number"
+                            min={0}
+                            required
+                            placeholder="Count all physical notes and coins"
+                            value={closingCashInput}
+                            onChange={(e) => setClosingCashInput(e.target.value)}
+                            className="h-10 text-base font-bold font-mono focus-visible:ring-emerald-500"
+                          />
+                          <p className="text-[11px] text-muted-foreground">Count all cash physically present in drawer</p>
+                        </div>
+                      </div>
+
+                      {/* Live Variance Calculation Display */}
+                      {activeClosingCash !== null && (
+                        <div className={`p-4 rounded-lg border flex items-center justify-between gap-3 ${
+                          activeVariance === 0
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-600 text-emerald-800 dark:text-emerald-200'
+                            : activeVariance < 0
+                            ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                            : 'bg-amber-50 dark:bg-emerald-950/30 border-amber-300 dark:border-emerald-600 text-amber-800 dark:text-emerald-200'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            {activeVariance === 0 ? (
+                              <Check className="w-5 h-5 text-emerald-600" />
+                            ) : (
+                              <AlertTriangle className="w-5 h-5" />
+                            )}
+                            <div>
+                              <p className="font-bold text-sm">
+                                {activeVariance === 0
+                                  ? 'Cash Drawer Perfectly Balanced'
+                                  : activeVariance < 0
+                                  ? `Cash Shortfall: ${formatCurrency(Math.abs(activeVariance))}`
+                                  : `Cash Overage: +${formatCurrency(activeVariance)}`}
+                              </p>
+                              <p className="text-xs opacity-80">
+                                Expected: {formatCurrency(activeExpectedCash)} &bull; Counted: {formatCurrency(activeClosingCash)}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="font-mono text-sm font-black px-3 py-1">
+                            Variance: {formatCurrency(activeVariance)}
+                          </Badge>
+                        </div>
+                      )}
+
+                      {/* Variance Explanation Note (Mandatory if variance != 0) */}
+                      {activeVariance !== 0 && (
+                        <div className="space-y-1.5 p-3 rounded-lg border border-amber-300 dark:border-emerald-500/40 bg-amber-50/50 dark:bg-emerald-950/20">
+                          <label className="text-xs font-bold text-amber-900 dark:text-emerald-300 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-emerald-400" />
+                            Variance Explanation Reason <span className="text-red-500">*</span>
+                          </label>
+                          <Input
+                            required
+                            placeholder="e.g. KES 200 short — customer change error; or unrecorded minor expense..."
+                            value={closingNotesInput}
+                            onChange={(e) => setClosingNotesInput(e.target.value)}
+                            className="h-10 text-sm bg-card"
+                          />
+                          <p className="text-[11px] text-amber-800 dark:text-emerald-400">
+                            A specific audit reason is required for any cash discrepancy before drawer can be closed.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* General Notes if variance == 0 */}
+                      {activeVariance === 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-muted-foreground">Closing Notes (Optional)</label>
+                          <Input
+                            placeholder="Optional notes for manager/admin reference..."
+                            value={closingNotesInput}
+                            onChange={(e) => setClosingNotesInput(e.target.value)}
+                            className="h-10 text-sm"
+                          />
+                        </div>
+                      )}
+
+                      <div className="pt-2 flex justify-end">
+                        <Button
+                          type="submit"
+                          disabled={submitClosingMutation.isPending || activeClosingCash === null}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 px-6 shadow-sm"
+                        >
+                          {submitClosingMutation.isPending ? 'Submitting Closing...' : 'Submit Daily Cash Closing'}
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Past Closings History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                Branch Cash Reconciliation History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingHistory ? (
+                <p className="text-center py-6 text-muted-foreground">Loading history...</p>
+              ) : closingHistory.length === 0 ? (
+                <p className="text-center py-6 text-muted-foreground">No past closing records found for this branch.</p>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Opening</TableHead>
+                        <TableHead className="text-right">Cash Received</TableHead>
+                        <TableHead className="text-right">M-Pesa</TableHead>
+                        <TableHead className="text-right">Expenses</TableHead>
+                        <TableHead className="text-right">Expected</TableHead>
+                        <TableHead className="text-right">Actual Counted</TableHead>
+                        <TableHead className="text-right">Variance</TableHead>
+                        <TableHead>Closed By</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {closingHistory.map((rec: any) => {
+                        const varianceNum = Number(rec.variance || 0)
+                        return (
+                          <TableRow key={rec.id}>
+                            <TableCell className="font-semibold text-xs whitespace-nowrap">
+                              {fmt(new Date(rec.date))}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className="bg-emerald-100 text-emerald-800 text-[10px]">
+                                {rec.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">{formatCurrency(Number(rec.openingCash))}</TableCell>
+                            <TableCell className="text-right font-mono text-xs text-emerald-600 font-bold">+{formatCurrency(Number(rec.cashSales))}</TableCell>
+                            <TableCell className="text-right font-mono text-xs text-muted-foreground">{formatCurrency(Number(rec.mpesaSales))}</TableCell>
+                            <TableCell className="text-right font-mono text-xs text-amber-600">-{formatCurrency(Number(rec.totalExpenses))}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-bold">{formatCurrency(Number(rec.expectedCash))}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-bold">{formatCurrency(Number(rec.closingCash))}</TableCell>
+                            <TableCell className={`text-right font-mono text-xs font-bold ${
+                              varianceNum === 0 ? 'text-emerald-600' : varianceNum < 0 ? 'text-red-600' : 'text-amber-600'
+                            }`}>
+                              {formatCurrency(varianceNum)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                              {rec.submittedBy ? `${rec.submittedBy.firstName} ${rec.submittedBy.lastName}` : '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={rec.notes}>
+                              {rec.notes || '—'}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB 2: MIDNIGHT INVENTORY SNAPSHOTS                                    */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'snapshots' && (
+        <div className="space-y-6">
+
+          {/* Navigation Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-card border rounded-xl shadow-sm">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goBack} className="gap-1">
+                <ArrowLeft className="w-4 h-4" /> Earlier
+              </Button>
+              <Button variant="outline" size="sm" onClick={goForward} disabled={!canGoForward} className="gap-1">
+                Later <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setAnchor(today)} disabled={anchor.getTime() === today.getTime()}>
+                Today
               </Button>
             </div>
-            {snapshot && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {snapshot.branchName} &nbsp;·&nbsp; Captured at midnight ({new Date(snapshot.recordedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}) &nbsp;·&nbsp; {snapshot.totalProducts} products
-              </p>
-            )}
-          </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-6 py-2 min-h-0">
-            {loadingSnapshot ? (
-              <div className="text-center py-16 text-muted-foreground">Loading snapshot…</div>
-            ) : !snapshot ? (
-              <div className="text-center py-16 text-muted-foreground">No data found</div>
-            ) : (
-              snapshot.categories.map((cat: any) => {
-                const isLpg       = cat.name.toUpperCase().includes('LPG')
-                const totalFull   = isLpg ? cat.items.reduce((s: number, i: any) => s + (i.fullCylinders || 0), 0) : null
-                const totalEmpty  = isLpg ? cat.items.reduce((s: number, i: any) => s + (i.emptyCylinders || 0), 0) : null
-                const totalQty    = !isLpg ? cat.items.reduce((s: number, i: any) => s + i.quantity, 0) : null
-
-                return (
-                  <div key={cat.id} className="border rounded-xl overflow-hidden">
-                    <div className="bg-muted/30 px-4 py-2.5 border-b flex items-center justify-between">
-                      <h3 className="font-bold text-primary uppercase tracking-wide text-sm">{cat.name}</h3>
-                      <Badge variant="outline">{cat.items.length} items</Badge>
-                    </div>
-
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/10 hover:bg-muted/10">
-                          <TableHead className="font-bold">Product</TableHead>
-                          <TableHead className="font-bold hidden sm:table-cell">Code</TableHead>
-                          {isLpg ? (
-                            <>
-                              <TableHead className="font-bold text-blue-600 text-center">Full (Refills)</TableHead>
-                              <TableHead className="font-bold text-amber-600 text-center">Empty (Shells)</TableHead>
-                            </>
-                          ) : (
-                            <TableHead className="font-bold text-center" colSpan={2}>Quantity</TableHead>
-                          )}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {cat.items.map((item: any) => (
-                          <TableRow key={item.productId} className="hover:bg-muted/10">
-                            <TableCell className="font-medium">{item.productName}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">{item.productCode}</TableCell>
-                            {isLpg ? (
-                              <>
-                                <TableCell className="text-center text-lg font-black text-blue-600">{item.fullCylinders ?? 0}</TableCell>
-                                <TableCell className="text-center text-lg font-black text-amber-600">{item.emptyCylinders ?? 0}</TableCell>
-                              </>
-                            ) : (
-                              <TableCell className="text-center text-lg font-black text-primary" colSpan={2}>{item.quantity}</TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                      {/* Category totals footer */}
-                      <tfoot>
-                        <TableRow className="bg-muted/20 border-t-2">
-                          <TableCell className="font-black text-xs uppercase tracking-widest text-muted-foreground" colSpan={2}>Total</TableCell>
-                          {isLpg ? (
-                            <>
-                              <TableCell className="text-center font-black text-blue-700">{totalFull}</TableCell>
-                              <TableCell className="text-center font-black text-amber-700">{totalEmpty}</TableCell>
-                            </>
-                          ) : (
-                            <TableCell className="text-center font-black text-primary" colSpan={2}>{totalQty}</TableCell>
-                          )}
-                        </TableRow>
-                      </tfoot>
-                    </Table>
-                  </div>
-                )
-              })
-            )}
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                max={toISODate(today)}
+                value={jumpDate}
+                onChange={(e) => setJumpDate(e.target.value)}
+                className="w-40 h-8 text-xs"
+              />
+              <Button variant="secondary" size="sm" onClick={handleJump} disabled={!jumpDate}>
+                Go to Date
+              </Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+
+          {/* 7-day strip */}
+          <div className="grid grid-cols-7 gap-2">
+            {week.map((day) => {
+              const iso = toISODate(day)
+              const snap = snapshotMap.get(iso)
+              const isToday = iso === toISODate(today)
+              const isSelected = iso === selectedDate
+
+              return (
+                <Card
+                  key={iso}
+                  className={`cursor-pointer transition-all border text-center ${
+                    isSelected ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50 bg-card'
+                  }`}
+                  onClick={() => setSelectedDate(snap ? iso : null)}
+                >
+                  <CardContent className="p-3">
+                    <p className="text-[11px] text-muted-foreground font-semibold uppercase">{fmtShort(day)}</p>
+                    <p className="text-base font-bold my-1">{day.getDate()}</p>
+                    {snap ? (
+                      <Badge className="bg-emerald-600 text-white text-[10px] px-1.5 py-0 gap-1 mx-auto">
+                        <CheckCircle2 className="w-2.5 h-2.5" /> Captured
+                      </Badge>
+                    ) : isToday ? (
+                      <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 dark:border-emerald-500/40 px-1.5 py-0">
+                        Tonight
+                      </Badge>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground opacity-50 block">No record</span>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Selected Date Detail View */}
+          {selectedDate && snapshot && (
+            <Card className="border-primary/20 shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-lg">
+                    Midnight Snapshot — {fmt(new Date(snapshot.date))}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Captured automatically at {new Date(snapshot.recordedAt).toLocaleTimeString()} &bull; {snapshot.totalProducts} total products tracked
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+                  <Printer className="w-4 h-4" /> Print Report
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {snapshot.categories.map((cat: any) => {
+                  const isLpg = cat.name.toUpperCase().includes('LPG')
+                  return (
+                    <div key={cat.id} className="space-y-2">
+                      <h4 className="font-bold text-sm text-foreground uppercase tracking-wide border-b pb-1">
+                        {cat.name}
+                      </h4>
+                      <div className="rounded-md border overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Product Name</TableHead>
+                              <TableHead>Code</TableHead>
+                              {isLpg ? (
+                                <>
+                                  <TableHead className="text-right">Full (Refills)</TableHead>
+                                  <TableHead className="text-right">Empty (Shells)</TableHead>
+                                </>
+                              ) : (
+                                <TableHead className="text-right">Quantity</TableHead>
+                              )}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {cat.items.map((item: any) => (
+                              <TableRow key={item.productId}>
+                                <TableCell className="font-medium text-xs">{item.productName}</TableCell>
+                                <TableCell className="font-mono text-xs text-muted-foreground">{item.productCode}</TableCell>
+                                {isLpg ? (
+                                  <>
+                                    <TableCell className="text-right font-bold text-blue-600 font-mono text-xs">{item.fullCylinders ?? 0}</TableCell>
+                                    <TableCell className="text-right font-bold text-amber-600 font-mono text-xs">{item.emptyCylinders ?? 0}</TableCell>
+                                  </>
+                                ) : (
+                                  <TableCell className="text-right font-bold font-mono text-xs">{item.quantity}</TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {!selectedDate && (
+            <div className="text-center py-12 border rounded-xl bg-card text-muted-foreground">
+              <PackageCheck className="w-10 h-10 mx-auto opacity-30 mb-2" />
+              <p className="text-sm">Click any captured date in the weekly bar above to inspect its midnight inventory snapshot.</p>
+            </div>
+          )}
+
+        </div>
+      )}
+
     </div>
   )
 }

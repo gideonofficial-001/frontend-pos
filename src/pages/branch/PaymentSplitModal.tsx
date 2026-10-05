@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { mpesaApi } from '@/api'
+import { mpesaApi, salesApi } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Smartphone, Banknote, CheckCircle2, Loader2, AlertCircle, X, User, ShieldAlert, ShieldCheck, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
-interface PaymentEntry {
+export interface PaymentEntry {
   method: 'MPESA' | 'CASH'
   amount: number
   mpesaRef?: string
@@ -15,7 +15,9 @@ interface PaymentEntry {
 
 interface Props {
   total: number
+  pendingSaleData?: any
   onConfirm: (payments: PaymentEntry[]) => void
+  onStkComplete?: (sale: any) => void
   onClose: () => void
 }
 
@@ -33,7 +35,7 @@ const s = {
   btnConfirm: {},
 } as const
 
-export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
+export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComplete, onClose }: Props) {
   const [mpesaAmount, setMpesaAmount] = useState<string>('')
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState('')
@@ -41,6 +43,7 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
   const [mpesaStatus, setMpesaStatus]     = useState<MpesaStatus>('idle')
   const [verifyStatus, setVerifyStatus]   = useState<VerifyStatus>('idle')
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null)
+  const [pendingSaleId, setPendingSaleId] = useState<string | null>(null)
   const [mpesaRef, setMpesaRef]           = useState<string>('')
   const [customerName, setCustomerName]   = useState<string | null>(null)
   const [failureReason, setFailureReason] = useState<string>('Payment failed or was cancelled.')
@@ -73,7 +76,7 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
     return null
   }
 
-  // ── STK Push ─────────────────────────────────────────────────────────────
+  // ── STK Push (Initiates PENDING Sale FIRST) ───────────────────────────────
   const handleSendStk = async () => {
     const formatted = formatPhone(phone)
     if (!formatted) {
@@ -87,8 +90,24 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
     setCustomerName(null)
     setFailureReason('Payment failed or was cancelled.')
     try {
-      const res = await mpesaApi.stkPush(formatted, mpesaAmt)
-      setCheckoutRequestId(res.data.checkoutRequestId)
+      let reqId = ''
+      if (pendingSaleData) {
+        const salePayload = {
+          ...pendingSaleData,
+          payments: [
+            { method: 'MPESA', amount: mpesaAmt, phoneNumber: formatted },
+            ...(cashAmt > 0 ? [{ method: 'CASH', amount: cashAmt }] : []),
+          ],
+          isStkPending: true,
+        }
+        const res = await salesApi.create(salePayload)
+        reqId = res.data.checkoutRequestId
+        setPendingSaleId(res.data.id)
+      } else {
+        const res = await mpesaApi.stkPush(formatted, mpesaAmt)
+        reqId = res.data.checkoutRequestId
+      }
+      setCheckoutRequestId(reqId)
       setMpesaStatus('pending')
       toast.info(`STK push sent to ${phone}. Waiting for customer PIN…`)
     } catch (err: any) {
@@ -102,13 +121,18 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
     if (!checkoutRequestId) return false
     try {
       const res = await mpesaApi.getStatus(checkoutRequestId)
-      const { status, receiptNumber, customerName: name, resultDesc } = res.data
+      const { status, receiptNumber, customerName: name, resultDesc, sale } = res.data
       if (status === 'COMPLETED') {
         const finalRef = receiptNumber || checkoutRequestId
         setMpesaRef(finalRef)
         setCustomerName(name || null)
         setMpesaStatus('confirmed')
         toast.success(`M-Pesa confirmed! Receipt: ${finalRef}`)
+        if (sale && onStkComplete) {
+          setTimeout(() => {
+            onStkComplete(sale)
+          }, 600)
+        }
         return true
       } else if (status === 'FAILED') {
         setFailureReason(resultDesc || 'Payment failed or was cancelled.')
@@ -169,7 +193,7 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
     }
   }
 
-  // ── Final confirm ─────────────────────────────────────────────────────────
+  // ── Final confirm (Immediate CASH or verified manual MPESA) ───────────────
   const handleConfirm = () => {
     const payments: PaymentEntry[] = []
     if (mpesaAmt > 0) payments.push({
@@ -181,6 +205,13 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
     onConfirm(payments)
   }
 
+  const handleCancel = () => {
+    if (pendingSaleId && mpesaStatus === 'pending') {
+      salesApi.cancel(pendingSaleId).catch(() => {})
+    }
+    onClose()
+  }
+
   const resetManual = () => {
     setMpesaReceiptInput('')
     setVerifyStatus('idle')
@@ -188,7 +219,7 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
   }
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && handleCancel()}>
       <DialogContent className="sm:max-w-sm bg-card text-card-foreground border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Payment</DialogTitle>
@@ -418,7 +449,7 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
 
         {/* Action buttons */}
         <div className="flex gap-3 pt-2">
-          <Button variant="outline" onClick={onClose} className="flex-1 h-10">
+          <Button variant="outline" onClick={handleCancel} className="flex-1 h-10">
             Cancel
           </Button>
           <Button

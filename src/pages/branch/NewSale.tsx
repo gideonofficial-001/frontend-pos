@@ -11,22 +11,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
-import { ShoppingCart, Minus, Plus, Trash2, Search, Package, Flame, Smartphone, Tag, Bookmark, RotateCcw } from 'lucide-react'
-import { PaymentSplitModal } from './PaymentSplitModal'
+import {
+  ShoppingCart, Minus, Plus, Trash2, Search, Package, Flame, Tag,
+  Bookmark, RotateCcw, ShieldAlert, KeyRound, Check
+} from 'lucide-react'
+import { PaymentSplitModal, PaymentEntry } from './PaymentSplitModal'
 import { ThermalReceiptModal } from './ThermalReceiptModal'
 
 const VARIANT_SEPARATOR = '~~'
 
-interface PaymentEntry {
-  method: 'MPESA' | 'CASH'
-  amount: number
-  mpesaRef?: string
-}
-
 const NewSale = () => {
   const { user } = useAuthStore()
   const {
-    items, addItem, removeItem, updateQuantity, updateItemDiscount, clearCart,
+    items, addItem, removeItem, updateQuantity, updateItemDiscount, updateItemCylinder, clearCart,
     getSubtotal, getTotalDiscount, getTotal,
     parkedCarts, parkCurrentCart, recallCart, removeParkedCart,
   } = useCartStore()
@@ -39,6 +36,17 @@ const NewSale = () => {
 
   // Tracks which cart item has its discount input open
   const [discountOpenFor, setDiscountOpenFor] = useState<string | null>(null)
+
+  // Cylinder Selection State
+  const [cylinderPickerItem, setCylinderPickerItem] = useState<any | null>(null)
+  const [availableCylinders, setAvailableCylinders] = useState<any[]>([])
+  const [loadingCylinders, setLoadingCylinders] = useState(false)
+  const [cylinderSearch, setCylinderSearch] = useState('')
+
+  // Discount Override Modal State
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false)
+  const [managerOverrideCode, setManagerOverrideCode] = useState('')
+  const [discountReason, setDiscountReason] = useState('')
 
   const [lpgModalOpen, setLpgModalOpen] = useState(false)
   const [selectedInvItem, setSelectedInvItem] = useState<any>(null)
@@ -74,6 +82,23 @@ const NewSale = () => {
     },
   })
 
+  const openCylinderPickerForItem = async (item: any) => {
+    setCylinderPickerItem(item)
+    setCylinderSearch('')
+    setLoadingCylinders(true)
+    const [rawProductId, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
+    const status = lpgVariant === 'EMPTY_SHELL' ? 'EMPTY' : 'FULL'
+    try {
+      const res = await inventoryApi.getAvailableCylinders(branchId, rawProductId, status)
+      setAvailableCylinders(Array.isArray(res.data) ? res.data : [])
+    } catch {
+      toast.error('Failed to load available cylinders')
+      setAvailableCylinders([])
+    } finally {
+      setLoadingCylinders(false)
+    }
+  }
+
   const createSaleMutation = useMutation({
     mutationFn: (data: any) => salesApi.create(data),
     onSuccess: (response, variables) => {
@@ -81,7 +106,7 @@ const NewSale = () => {
         const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
         const label = lpgVariant === 'REFILL' ? ' (Refill)' : lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
         return {
-          name: `${item.product.name}${label}`,
+          name: `${item.product.name}${label}${item.cylinderSerial ? ` [${item.cylinderSerial}]` : ''}`,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discount: item.discount,
@@ -136,6 +161,8 @@ const NewSale = () => {
       setDiscountOpenFor(null)
       setSplitModalOpen(false)
       setPendingSaleData(null)
+      setManagerOverrideCode('')
+      setDiscountReason('')
       queryClient.invalidateQueries({ queryKey: ['sales'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
@@ -144,6 +171,54 @@ const NewSale = () => {
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create sale'),
   })
+
+  const handleStkComplete = (sale: any) => {
+    setSplitModalOpen(false)
+    const itemsSnapshot = items.map(item => {
+      const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
+      const label = lpgVariant === 'REFILL' ? ' (Refill)' : lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
+      return {
+        name: `${item.product.name}${label}${item.cylinderSerial ? ` [${item.cylinderSerial}]` : ''}`,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discount: item.discount,
+        total: item.total,
+      }
+    })
+
+    const customerObj = customers.find((c: any) => c.id === sale.customerId)
+
+    setCompletedReceipt({
+      saleCode: sale.saleCode,
+      date: new Date(sale.createdAt || Date.now()).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      branchName: sale?.branch?.name || user?.branchId || 'Branch',
+      cashierName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Cashier',
+      customerName: customerObj?.name || sale?.customer?.name || pendingSaleData?.customerName || undefined,
+      customerPhone: customerObj?.phone || sale?.customer?.phone || undefined,
+      saleType: sale.type,
+      items: itemsSnapshot,
+      subtotal: getSubtotal(),
+      totalDiscount: getTotalDiscount(),
+      total: getTotal(),
+      payments: sale.payments && sale.payments.length > 0 ? sale.payments : [{ method: 'MPESA', amount: getTotal() }],
+    })
+
+    toast.success(`Sale completed via M-Pesa! Code: ${sale.saleCode}`)
+    clearCart()
+    setSearch('')
+    setSelectedCustomerId('')
+    setCustomerName('')
+    setSaleType(SaleType.CASH)
+    setDiscountOpenFor(null)
+    setPendingSaleData(null)
+    setManagerOverrideCode('')
+    setDiscountReason('')
+    queryClient.invalidateQueries({ queryKey: ['sales'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['inventory'] })
+    queryClient.invalidateQueries({ queryKey: ['customers'] })
+    queryClient.invalidateQueries({ queryKey: ['invoices'] })
+  }
 
   const filteredInventory = inventory?.filter((inv: any) => {
     if (!inv.product?.isActive) return false
@@ -176,6 +251,8 @@ const NewSale = () => {
     customerId: requiresCustomer ? selectedCustomerId : undefined,
     customerName: !requiresCustomer && customerName.trim() ? customerName.trim() : undefined,
     idempotencyKey: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `sale_${Date.now()}_${Math.random()}`,
+    discountReason: discountReason.trim() || undefined,
+    managerOverrideCode: managerOverrideCode.trim() || undefined,
     items: items.map(item => {
       const [productId, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
       return {
@@ -183,13 +260,36 @@ const NewSale = () => {
         quantity: item.quantity,
         discount: item.discount,
         ...(lpgVariant ? { lpgVariant } : {}),
+        cylinderId: item.cylinderId || undefined,
+        serialNumber: item.cylinderSerial || undefined,
       }
     }),
   })
 
+  const totalDiscount = getTotalDiscount()
+  const subtotal = getSubtotal()
+  const total = getTotal()
+
   const handleCheckout = () => {
     if (items.length === 0) return toast.error('Cart is empty')
     if (requiresCustomer && !selectedCustomerId) return toast.error('Please select a customer for this sale')
+
+    // Verify all tracked cylinder items have an assigned cylinder
+    for (const item of items) {
+      if (item.product.isCylinderTracked && !item.cylinderId) {
+        toast.error(`Please select a cylinder for ${item.product.name}`)
+        openCylinderPickerForItem(item)
+        return
+      }
+    }
+
+    // Verify discount limits for branch manager
+    const requiresOverride = user?.role === 'BRANCH_MANAGER' && (totalDiscount > 500 || totalDiscount > (subtotal * 0.10 + 0.01))
+    if (requiresOverride && !managerOverrideCode.trim()) {
+      setOverrideModalOpen(true)
+      return
+    }
+
     const saleData = buildSaleData()
     if (saleType === SaleType.INVOICE) {
       createSaleMutation.mutate(saleData)
@@ -202,7 +302,7 @@ const NewSale = () => {
   const handlePaymentConfirm = (payments: PaymentEntry[]) => {
     setSplitModalOpen(false)
     if (pendingSaleData) {
-      createSaleMutation.mutate({ ...pendingSaleData, payments })
+      createSaleMutation.mutate({ ...pendingSaleData, payments, isStkPending: false })
     }
   }
 
@@ -234,10 +334,6 @@ const NewSale = () => {
     setLpgModalOpen(false)
     setSearch('')
   }
-
-  const totalDiscount = getTotalDiscount()
-  const subtotal = getSubtotal()
-  const total = getTotal()
 
   return (
     <div className="flex flex-col lg:min-h-[calc(100vh-6rem)] bg-background space-y-4 pb-10 lg:pb-0">
@@ -300,6 +396,11 @@ const NewSale = () => {
                         </div>
                         <div>
                           <h4 className="font-semibold text-sm line-clamp-2 leading-snug">{product.name}</h4>
+                          {product.isCylinderTracked && (
+                            <span className="text-[10px] text-amber-600 dark:text-emerald-400 font-bold block mt-0.5">
+                              • Serialized Cylinders
+                            </span>
+                          )}
                           <p className="text-lg font-black text-primary mt-1">{formatCurrency(displayPrice)}</p>
                         </div>
                       </CardContent>
@@ -410,6 +511,31 @@ const NewSale = () => {
                       </Button>
                     </div>
 
+                    {/* Serialized Cylinder Selection Row */}
+                    {item.product.isCylinderTracked && (
+                      <div className="px-2.5 py-1.5 bg-muted/40 border-t flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-emerald-400 shrink-0" />
+                          <span className="font-semibold text-muted-foreground shrink-0">Cylinder:</span>
+                          {item.cylinderSerial ? (
+                            <span className="font-mono font-bold text-foreground bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 px-1.5 py-0.5 rounded truncate">
+                              {item.cylinderSerial}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400 font-semibold italic">Not assigned</span>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[11px] px-2 py-0 border-amber-300 dark:border-emerald-500/40 hover:bg-amber-50 dark:hover:bg-emerald-950/40 shrink-0"
+                          onClick={() => openCylinderPickerForItem(item)}
+                        >
+                          {item.cylinderSerial ? 'Change' : 'Select'}
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Inline discount input — only shown when toggled */}
                     {discountOpenFor === item.productId && (
                       <div className="px-2 pb-2 pt-0 flex items-center gap-2 bg-emerald-50/50 border-t border-emerald-100">
@@ -499,10 +625,156 @@ const NewSale = () => {
       {splitModalOpen && pendingSaleData && (
         <PaymentSplitModal
           total={total}
+          pendingSaleData={pendingSaleData}
           onConfirm={handlePaymentConfirm}
+          onStkComplete={handleStkComplete}
           onClose={() => { setSplitModalOpen(false); setPendingSaleData(null) }}
         />
       )}
+
+      {/* Cylinder Selection Modal */}
+      <Dialog open={!!cylinderPickerItem} onOpenChange={(o) => !o && setCylinderPickerItem(null)}>
+        <DialogContent className="sm:max-w-md bg-card text-card-foreground">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-amber-600 dark:text-emerald-400" />
+              Assign Cylinder: {cylinderPickerItem?.product?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Select the specific tracked cylinder unit to be issued with this sale:
+            </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search serial number..."
+                value={cylinderSearch}
+                onChange={(e) => setCylinderSearch(e.target.value)}
+                className="pl-9 h-10 text-sm"
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-2">
+              {loadingCylinders ? (
+                <p className="text-sm text-center py-6 text-muted-foreground">Loading available cylinders...</p>
+              ) : availableCylinders.length === 0 ? (
+                <p className="text-sm text-center py-6 text-muted-foreground">No available cylinders found for this branch.</p>
+              ) : (
+                availableCylinders
+                  .filter((c: any) =>
+                    !cylinderSearch.trim() ||
+                    c.serialNumber?.toLowerCase().includes(cylinderSearch.toLowerCase())
+                  )
+                  .map((cyl: any) => {
+                    const isSelected = cylinderPickerItem?.cylinderId === cyl.id
+                    return (
+                      <div
+                        key={cyl.id}
+                        className={`flex items-center justify-between p-2.5 rounded-md border cursor-pointer transition-colors ${
+                          isSelected ? 'border-primary bg-primary/10' : 'hover:bg-muted/40'
+                        }`}
+                        onClick={() => {
+                          updateItemCylinder(cylinderPickerItem.productId, cyl.id, cyl.serialNumber)
+                          toast.success(`Assigned cylinder: ${cyl.serialNumber}`)
+                          setCylinderPickerItem(null)
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Flame className="w-4 h-4 text-amber-500" />
+                          <div>
+                            <p className="text-sm font-bold font-mono">{cyl.serialNumber}</p>
+                            <p className="text-[11px] text-muted-foreground">Condition: {cyl.condition || 'GOOD'}</p>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-primary" />}
+                      </div>
+                    )
+                  })
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              {cylinderPickerItem?.cylinderId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    updateItemCylinder(cylinderPickerItem.productId, undefined, undefined)
+                    setCylinderPickerItem(null)
+                    toast.info('Cylinder assignment removed')
+                  }}
+                >
+                  Clear Selection
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => setCylinderPickerItem(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discount Manager Override Modal */}
+      <Dialog open={overrideModalOpen} onOpenChange={setOverrideModalOpen}>
+        <DialogContent className="sm:max-w-md bg-card text-card-foreground">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-emerald-400">
+              <ShieldAlert className="w-5 h-5" />
+              Manager Authorization Required
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Total discounts of <strong>{formatCurrency(totalDiscount)}</strong> exceed your branch manager limit (Max 10% or KES 500). Enter the administrator override code and reason to proceed.
+            </p>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Manager Override Code *</Label>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="Enter override code"
+                  value={managerOverrideCode}
+                  onChange={(e) => setManagerOverrideCode(e.target.value)}
+                  className="pl-9 h-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Discount Reason (Optional)</Label>
+              <Input
+                placeholder="e.g. Loyalty customer, promotional offer..."
+                value={discountReason}
+                onChange={(e) => setDiscountReason(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setOverrideModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!managerOverrideCode.trim()) {
+                    toast.error('Please enter the manager override code')
+                    return
+                  }
+                  setOverrideModalOpen(false)
+                  const saleData = buildSaleData()
+                  if (saleType === SaleType.INVOICE) {
+                    createSaleMutation.mutate(saleData)
+                  } else {
+                    setPendingSaleData(saleData)
+                    setSplitModalOpen(true)
+                  }
+                }}
+              >
+                Authorize & Checkout
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* LPG selection modal */}
       <Dialog open={lpgModalOpen} onOpenChange={setLpgModalOpen}>
@@ -615,7 +887,6 @@ const NewSale = () => {
           onClose={() => setCompletedReceipt(null)}
         />
       )}
-
 
     </div>
   )

@@ -127,6 +127,8 @@ export const inventoryApi = {
     endDate?: string
     search?: string
   }) => api.get('/inventory/adjustments', { params }),
+  getAvailableCylinders: (branchId: string, productId: string, status?: string) =>
+    api.get('/inventory/cylinders/available', { params: { branchId, productId, status } }),
   delete: (id: string) => api.delete(`/inventory/${id}`),
 }
 
@@ -156,6 +158,7 @@ export const salesApi = {
   getById: (id: string) => api.get(`/sales/${id}`),
   getByCode: (code: string) => api.get(`/sales/code/${code}`),
   create: (data: any) => api.post('/sales', data),
+  cancel: (id: string) => api.patch(`/sales/${id}/cancel`),
   getWeekly: (year?: number, week?: number) =>
     api.get('/sales/weekly', { params: { year, week } }),
 }

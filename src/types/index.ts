@@ -365,6 +365,8 @@ export interface CartItem {
   unitPrice: number
   discount: number
   total: number
+  cylinderId?: string
+  cylinderSerial?: string
 }
 
 export interface StockMovement {
