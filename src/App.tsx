@@ -91,11 +91,15 @@ function App() {
 
   useEffect(() => {
     const root = window.document.documentElement
-    root.classList.remove('dark', 'theme-jungle')
+    root.classList.remove('dark', 'theme-jungle', 'theme-pink', 'theme-aqua')
     if (theme === 'dark') {
       root.classList.add('dark')
     } else if (theme === 'jungle') {
       root.classList.add('dark', 'theme-jungle')
+    } else if (theme === 'pink') {
+      root.classList.add('dark', 'theme-pink')
+    } else if (theme === 'aqua') {
+      root.classList.add('dark', 'theme-aqua')
     }
   }, [theme])
 

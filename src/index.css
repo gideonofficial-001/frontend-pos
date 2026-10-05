@@ -69,6 +69,50 @@
     --input: 164 30% 17%;
     --ring: 156 75% 50%;
   }
+
+  .theme-pink {
+    --background: 330 35% 6%;
+    --foreground: 330 25% 96%;
+    --card: 330 30% 9.5%;
+    --card-foreground: 330 25% 96%;
+    --popover: 330 30% 9.5%;
+    --popover-foreground: 330 25% 96%;
+    --primary: 336 86% 58%;
+    --primary-foreground: 330 100% 98%;
+    --secondary: 330 25% 15%;
+    --secondary-foreground: 330 25% 95%;
+    --muted: 330 22% 13%;
+    --muted-foreground: 330 15% 65%;
+    --accent: 330 28% 18%;
+    --accent-foreground: 330 25% 96%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 330 25% 18%;
+    --input: 330 25% 18%;
+    --ring: 336 86% 58%;
+  }
+
+  .theme-aqua {
+    --background: 192 48% 6%;
+    --foreground: 190 25% 96%;
+    --card: 192 40% 9.5%;
+    --card-foreground: 190 25% 96%;
+    --popover: 192 40% 9.5%;
+    --popover-foreground: 190 25% 96%;
+    --primary: 185 85% 45%;
+    --primary-foreground: 192 80% 5%;
+    --secondary: 192 30% 15%;
+    --secondary-foreground: 190 25% 95%;
+    --muted: 192 28% 13%;
+    --muted-foreground: 190 15% 65%;
+    --accent: 192 30% 18%;
+    --accent-foreground: 190 25% 96%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 192 30% 18%;
+    --input: 192 30% 18%;
+    --ring: 185 85% 48%;
+  }
 }
 
 @layer base {
@@ -88,6 +132,28 @@
   .dark .border-amber-400,
   .dark .border-orange-100 {
     border-color: rgba(52, 211, 153, 0.45) !important;
+  }
+
+  /* Subtle neon pink outline in pink theme */
+  .theme-pink .border-yellow-200,
+  .theme-pink .border-yellow-300,
+  .theme-pink .border-yellow-400,
+  .theme-pink .border-amber-200,
+  .theme-pink .border-amber-300,
+  .theme-pink .border-amber-400,
+  .theme-pink .border-orange-100 {
+    border-color: rgba(244, 51, 123, 0.45) !important;
+  }
+
+  /* Subtle neon aqua outline in aqua theme */
+  .theme-aqua .border-yellow-200,
+  .theme-aqua .border-yellow-300,
+  .theme-aqua .border-yellow-400,
+  .theme-aqua .border-amber-200,
+  .theme-aqua .border-amber-300,
+  .theme-aqua .border-amber-400,
+  .theme-aqua .border-orange-100 {
+    border-color: rgba(17, 192, 218, 0.45) !important;
   }
 }
 
@@ -116,4 +182,20 @@
 
 .theme-jungle ::-webkit-scrollbar-thumb:hover {
   background: hsl(156 50% 40% / 0.6);
+}
+
+.theme-pink ::-webkit-scrollbar-thumb {
+  background: hsl(336 50% 35% / 0.4);
+}
+
+.theme-pink ::-webkit-scrollbar-thumb:hover {
+  background: hsl(336 60% 45% / 0.6);
+}
+
+.theme-aqua ::-webkit-scrollbar-thumb {
+  background: hsl(185 45% 30% / 0.4);
+}
+
+.theme-aqua ::-webkit-scrollbar-thumb:hover {
+  background: hsl(185 55% 40% / 0.6);
 }

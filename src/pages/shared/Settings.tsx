@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles } from 'lucide-react'
+import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets } from 'lucide-react'
 
 const Settings = () => {
   const { user, token, setAuth, clearAuth } = useAuthStore()
@@ -241,7 +241,7 @@ const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {/* Light Mode */}
             <button
               type="button"
@@ -306,6 +306,50 @@ const Settings = () => {
               </div>
               <p className="font-bold text-sm text-foreground">Dark Jungle Green</p>
               <p className="text-xs text-muted-foreground mt-0.5">Cool emerald & deep forest shade</p>
+            </button>
+
+            {/* Neon Pink */}
+            <button
+              type="button"
+              onClick={() => setTheme('pink')}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                theme === 'pink'
+                  ? 'border-pink-500 bg-pink-950/30 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/30 bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-pink-950/80 border border-pink-500/40 flex items-center justify-center text-pink-400">
+                  <Heart className="w-5 h-5" />
+                </div>
+                {theme === 'pink' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-pink-400" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-foreground">Neon Pink</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Vibrant fuchsia & velvet rose shade</p>
+            </button>
+
+            {/* Oceanic Aqua */}
+            <button
+              type="button"
+              onClick={() => setTheme('aqua')}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                theme === 'aqua'
+                  ? 'border-cyan-500 bg-cyan-950/30 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/30 bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                  <Droplets className="w-5 h-5" />
+                </div>
+                {theme === 'aqua' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-foreground">Oceanic Aqua</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Electric cyan & deep abyss shade</p>
             </button>
           </div>
         </CardContent>

@@ -8,7 +8,7 @@ import {
   ShoppingCart, FileText, RotateCcw, History, BarChart3,
   ClipboardList, Settings, LogOut, Bell, ArrowLeftRight,
   Receipt, ChevronLeft, ChevronRight, X, Menu, Smartphone,
-  Sun, Moon, Sparkles
+  Sun, Moon, Sparkles, Heart, Droplets
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -125,10 +125,24 @@ const Sidebar = () => {
         <button 
           onClick={toggleTheme} 
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors"
-          title={`Current theme: ${theme === 'jungle' ? 'Dark Jungle Green' : theme === 'dark' ? 'Dark Mode' : 'Light Mode'} (click to cycle)`}
+          title={`Current theme: ${
+            theme === 'jungle'
+              ? 'Dark Jungle Green'
+              : theme === 'pink'
+              ? 'Neon Pink'
+              : theme === 'aqua'
+              ? 'Oceanic Aqua'
+              : theme === 'dark'
+              ? 'Dark Mode'
+              : 'Light Mode'
+          } (click to cycle)`}
         >
           {theme === 'jungle' ? (
             <Sparkles className="w-5 h-5 shrink-0 text-emerald-400" />
+          ) : theme === 'pink' ? (
+            <Heart className="w-5 h-5 shrink-0 text-pink-400" />
+          ) : theme === 'aqua' ? (
+            <Droplets className="w-5 h-5 shrink-0 text-cyan-400" />
           ) : theme === 'dark' ? (
             <Moon className="w-5 h-5 shrink-0 text-indigo-400" />
           ) : (
@@ -136,7 +150,15 @@ const Sidebar = () => {
           )}
           {!collapsed && (
             <span>
-              {theme === 'jungle' ? 'Dark Jungle' : theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+              {theme === 'jungle'
+                ? 'Dark Jungle'
+                : theme === 'pink'
+                ? 'Neon Pink'
+                : theme === 'aqua'
+                ? 'Oceanic Aqua'
+                : theme === 'dark'
+                ? 'Dark Mode'
+                : 'Light Mode'}
             </span>
           )}
         </button>
