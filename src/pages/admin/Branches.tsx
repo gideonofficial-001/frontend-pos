@@ -54,6 +54,7 @@ const Branches = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       setShowCreate(false)
       setNewBranch({ name: '', code: '', address: '', phone: '', email: '', managerId: 'none' })
       toast.success('Branch created successfully')
@@ -81,6 +82,7 @@ const Branches = () => {
       toast.success('Branch updated successfully');
       setShowEdit(null); // Fixed the undefined function error here!
       queryClient.invalidateQueries({ queryKey: ['branches'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error: any) => {
       toast.error(

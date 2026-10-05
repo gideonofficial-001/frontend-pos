@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { usersApi } from '@/api'
+import { usersApi, branchesApi } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { UserRole, UserStatus } from '@/types'
-import { Plus, Trash2, UserCheck, AlertTriangle, KeySquare } from 'lucide-react'
+import { Plus, Trash2, UserCheck, AlertTriangle, Edit } from 'lucide-react'
 import { toast } from 'sonner'
 
 const Users = () => {
@@ -18,11 +18,17 @@ const Users = () => {
   const [showCreate, setShowCreate] = useState(false)
   const [showDelete, setShowDelete] = useState<string | null>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
-  const [newUser, setNewUser] = useState({ email: '', password: '', firstName: '', lastName: '', role: '', branchId: '' })
+  const [newUser, setNewUser] = useState({ email: '', password: '', firstName: '', lastName: '', role: UserRole.BRANCH_MANAGER as string, branchId: '' })
 
-  // 🚀 NEW: State for editing credentials
   const [editUser, setEditUser] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ email: '', newPassword: '' })
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: UserRole.BRANCH_MANAGER as string,
+    branchId: 'none',
+    newPassword: '',
+  })
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
@@ -32,12 +38,21 @@ const Users = () => {
     },
   })
 
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches'],
+    queryFn: async () => {
+      const response = await branchesApi.getAll()
+      return response.data || []
+    },
+  })
+
   const createMutation = useMutation({
     mutationFn: (data: any) => usersApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['branches'] })
       setShowCreate(false)
-      setNewUser({ email: '', password: '', firstName: '', lastName: '', role: '', branchId: '' })
+      setNewUser({ email: '', password: '', firstName: '', lastName: '', role: UserRole.BRANCH_MANAGER, branchId: '' })
       toast.success('User created successfully')
     },
     onError: (error: any) => {
@@ -49,6 +64,7 @@ const Users = () => {
     mutationFn: ({ id, confirmation }: { id: string; confirmation: string }) => usersApi.delete(id, confirmation),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['branches'] })
       setShowDelete(null)
       setDeleteConfirmation('')
       toast.success('User deleted successfully')
@@ -62,20 +78,21 @@ const Users = () => {
     mutationFn: ({ id, status }: { id: string; status: UserStatus }) => usersApi.update(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['branches'] })
       toast.success('User status updated')
     },
   })
 
-  // 🚀 NEW: Mutation for updating credentials
   const editCredentialsMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => usersApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['branches'] })
       setEditUser(null)
-      toast.success('User credentials updated successfully')
+      toast.success('User updated successfully')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update user credentials')
+      toast.error(error.response?.data?.message || 'Failed to update user')
     },
   })
 
@@ -85,26 +102,44 @@ const Users = () => {
       toast.error('Please fill in all required fields')
       return
     }
-    createMutation.mutate(newUser)
+    const payload: any = { ...newUser }
+    if (!payload.branchId || payload.branchId === 'none') {
+      delete payload.branchId
+    }
+    createMutation.mutate(payload)
   }
 
-  // 🚀 NEW: Handler for submitting edited credentials
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editForm.email) return toast.error('Email is required')
+    if (!editForm.email || !editForm.firstName || !editForm.lastName) {
+      return toast.error('First name, last name, and email are required')
+    }
 
-    const updateData: any = { email: editForm.email }
+    const updateData: any = {
+      firstName: editForm.firstName,
+      lastName: editForm.lastName,
+      email: editForm.email,
+      role: editForm.role,
+      branchId: editForm.branchId === 'none' ? null : editForm.branchId,
+    }
     if (editForm.newPassword) {
-      updateData.password = editForm.newPassword // The backend will intercept and hash this
+      updateData.password = editForm.newPassword
     }
 
     editCredentialsMutation.mutate({ id: editUser.id, data: updateData })
   }
 
-  // 🚀 NEW: Open edit modal and populate data
   const openEditModal = (user: any) => {
     setEditUser(user)
-    setEditForm({ email: user.email, newPassword: '' })
+    const currentBranchId = user.branchId || user.branch?.id || user.managedBranch?.id || 'none'
+    setEditForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      role: user.role || UserRole.BRANCH_MANAGER,
+      branchId: currentBranchId,
+      newPassword: '',
+    })
   }
 
   const getRoleBadge = (role: string) => {
@@ -163,27 +198,42 @@ const Users = () => {
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>{getStatusBadge(user.status)}</TableCell>
-                    <TableCell>{user.branch?.name || '-'}</TableCell>
+                    <TableCell>
+                      {user.branch?.name || user.managedBranch?.name ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">
+                            {user.branch?.name || user.managedBranch?.name}
+                          </span>
+                          {user.managedBranch && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/5 font-semibold">
+                              Manager
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {user.status === UserStatus.INACTIVE && (
                           <Button
                             variant="ghost"
                             size="icon"
+                            title="Activate User"
                             onClick={() => statusMutation.mutate({ id: user.id, status: UserStatus.ACTIVE })}
                           >
                             <UserCheck className="w-4 h-4 text-green-600" />
                           </Button>
                         )}
                         
-                        {/* 🚀 NEW: Edit Credentials Button */}
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="Edit Email & Password"
+                          title="Edit User & Branch"
                           onClick={() => openEditModal(user)}
                         >
-                          <KeySquare className="w-4 h-4 text-blue-600" />
+                          <Edit className="w-4 h-4 text-blue-600" />
                         </Button>
 
                         {user.role !== UserRole.SUPER_ADMIN && (
@@ -205,18 +255,37 @@ const Users = () => {
         </CardContent>
       </Card>
 
-      {/* 🚀 NEW: Edit Credentials Dialog */}
+      {/* Edit User Dialog */}
       <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit User Credentials</DialogTitle>
+            <DialogTitle>Edit User Details</DialogTitle>
             <DialogDescription>
-              Updating credentials for <span className="font-bold text-foreground">{editUser?.firstName} {editUser?.lastName}</span>
+              Updating details and branch assignment for <span className="font-bold text-foreground">{editUser?.firstName} {editUser?.lastName}</span>
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First Name *</Label>
+                <Input 
+                  value={editForm.firstName} 
+                  onChange={e => setEditForm({...editForm, firstName: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name *</Label>
+                <Input 
+                  value={editForm.lastName} 
+                  onChange={e => setEditForm({...editForm, lastName: e.target.value})} 
+                  required 
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>Email Address</Label>
+              <Label>Email Address *</Label>
               <Input 
                 type="email" 
                 value={editForm.email} 
@@ -224,6 +293,47 @@ const Users = () => {
                 required 
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select 
+                  value={editForm.role} 
+                  onValueChange={v => setEditForm({...editForm, role: v})}
+                  disabled={editUser?.role === UserRole.SUPER_ADMIN}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                  <SelectContent>
+                    {editUser?.role === UserRole.SUPER_ADMIN ? (
+                      <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
+                    ) : (
+                      <>
+                        <SelectItem value={UserRole.OVERALL_MANAGER}>Overall Manager</SelectItem>
+                        <SelectItem value={UserRole.BRANCH_MANAGER}>Branch Manager</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Assigned Branch</Label>
+                <Select 
+                  value={editForm.branchId} 
+                  onValueChange={v => setEditForm({...editForm, branchId: v})}
+                  disabled={editUser?.role === UserRole.SUPER_ADMIN}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Unassigned --</SelectItem>
+                    {branches.filter((b: any) => b.code !== 'HQ').map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Force Password Reset</Label>
               <Input 
@@ -233,7 +343,7 @@ const Users = () => {
                 onChange={e => setEditForm({...editForm, newPassword: e.target.value})} 
               />
               <p className="text-[10px] text-muted-foreground pt-1">
-                Leave blank if you only want to change the email. Overwriting the password will immediately replace their old one.
+                Leave blank if you only want to change details. Overwriting the password will immediately replace their old one.
               </p>
             </div>
             <DialogFooter className="pt-4">
@@ -256,30 +366,47 @@ const Users = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>First Name *</Label>
-                <Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} />
+                <Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} required />
               </div>
               <div className="space-y-2">
                 <Label>Last Name *</Label>
-                <Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} />
+                <Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} required />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Email *</Label>
-              <Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+              <Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} required />
             </div>
             <div className="space-y-2">
               <Label>Password *</Label>
-              <Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+              <Input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} required />
             </div>
-            <div className="space-y-2">
-              <Label>Role *</Label>
-              <Select value={newUser.role} onValueChange={v => setNewUser({...newUser, role: v})}>
-                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UserRole.OVERALL_MANAGER}>Overall Manager</SelectItem>
-                  <SelectItem value={UserRole.BRANCH_MANAGER}>Branch Manager</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Role *</Label>
+                <Select value={newUser.role} onValueChange={v => setNewUser({...newUser, role: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UserRole.OVERALL_MANAGER}>Overall Manager</SelectItem>
+                    <SelectItem value={UserRole.BRANCH_MANAGER}>Branch Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Assigned Branch</Label>
+                <Select 
+                  value={newUser.branchId || 'none'} 
+                  onValueChange={v => setNewUser({...newUser, branchId: v === 'none' ? '' : v})}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Unassigned --</SelectItem>
+                    {branches.filter((b: any) => b.code !== 'HQ').map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
