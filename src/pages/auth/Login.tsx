@@ -176,8 +176,8 @@ const Login = () => {
 
       <CardContent>
         {locationWarning && (
-          <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 dark:border-emerald-500/40 bg-amber-50 dark:bg-emerald-950/20 p-3 text-sm text-amber-800 dark:text-emerald-300">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-emerald-400" />
             <span>{locationWarning}</span>
           </div>
         )}

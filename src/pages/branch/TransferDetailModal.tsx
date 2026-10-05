@@ -44,16 +44,16 @@ interface Props {
 }
 
 const statusConfig = {
-  PENDING:   { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  PARTIAL:   { color: 'bg-blue-100 text-blue-800',     icon: AlertTriangle },
-  COMPLETED: { color: 'bg-green-100 text-green-800',  icon: CheckCircle2 },
-  CANCELLED: { color: 'bg-red-100 text-red-800',      icon: XCircle },
+  PENDING:   { color: 'bg-yellow-100 dark:bg-emerald-950/40 text-yellow-800 dark:text-emerald-300', icon: Clock },
+  PARTIAL:   { color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300',     icon: AlertTriangle },
+  COMPLETED: { color: 'bg-green-100 dark:bg-emerald-900/30 text-green-800 dark:text-emerald-300',  icon: CheckCircle2 },
+  CANCELLED: { color: 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300',      icon: XCircle },
 };
 
 const itemStatusConfig = {
-  PENDING:  { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Pending' },
-  ACCEPTED: { color: 'bg-green-100 text-green-700 border-green-200',   label: 'Accepted' },
-  REJECTED: { color: 'bg-red-100 text-red-700 border-red-200',         label: 'Rejected' },
+  PENDING:  { color: 'bg-yellow-100 dark:bg-emerald-950/30 text-yellow-700 dark:text-emerald-300 border-yellow-200 dark:border-emerald-500/40', label: 'Pending' },
+  ACCEPTED: { color: 'bg-green-100 dark:bg-emerald-900/30 text-green-700 dark:text-emerald-300 border-green-200 dark:border-emerald-600/30',   label: 'Accepted' },
+  REJECTED: { color: 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-600/30',         label: 'Rejected' },
 };
 
 export function TransferDetailModal({ transfer, onClose, onUpdate }: Props) {

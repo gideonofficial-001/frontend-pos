@@ -194,7 +194,7 @@ export default function AdminDevices() {
                 key={device.id}
                 className={
                   isPending
-                    ? 'border-amber-300 bg-amber-50/40 shadow-sm'
+                    ? 'border-amber-300 dark:border-emerald-500/40 bg-amber-50/40 dark:bg-emerald-950/20 shadow-sm'
                     : 'hover:shadow-sm transition-shadow'
                 }
               >
@@ -262,7 +262,7 @@ export default function AdminDevices() {
                       <div
                         className={`flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 ${
                           isPending
-                            ? 'bg-amber-100 text-amber-800'
+                            ? 'bg-amber-100 dark:bg-emerald-950/40 text-amber-800 dark:text-emerald-300'
                             : 'bg-muted text-muted-foreground'
                         }`}
                       >
@@ -270,7 +270,7 @@ export default function AdminDevices() {
                         <span className="flex-1">
                           {isPending ? 'Logging in from ' : 'Last login from '}
                           {hasText ? (
-                            <span className={isPending ? 'text-amber-900 font-semibold' : ''}>
+                            <span className={isPending ? 'text-amber-900 dark:text-emerald-200 font-semibold' : ''}>
                               {locationStr}
                             </span>
                           ) : (
@@ -360,8 +360,8 @@ export default function AdminDevices() {
                 <span>Also emailed to <strong>{approvedDevice.userEmail}</strong></span>
               </div>
             ) : (
-              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                <MailX className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 text-sm text-amber-800 dark:text-emerald-300 bg-amber-50 dark:bg-emerald-950/20 border border-amber-200 dark:border-emerald-500/40 rounded-md px-3 py-2">
+                <MailX className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-emerald-400" />
                 <span>{approvedDevice?.emailError ?? 'Email not configured — share the code below directly.'}</span>
               </div>
             )}

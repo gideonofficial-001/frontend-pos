@@ -36,16 +36,16 @@ interface TransferItem {
 }
 
 const statusConfig = {
-  PENDING:   { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock,        label: 'Pending' },
-  PARTIAL:   { color: 'bg-blue-100 text-blue-800 border-blue-200',       icon: AlertCircle,  label: 'Partial' },
-  COMPLETED: { color: 'bg-green-100 text-green-800 border-green-200',    icon: CheckCircle2, label: 'Completed' },
-  CANCELLED: { color: 'bg-red-100 text-red-800 border-red-200',          icon: XCircle,      label: 'Cancelled' },
+  PENDING:   { color: 'bg-yellow-100 dark:bg-emerald-950/40 text-yellow-800 dark:text-emerald-300 border-yellow-200 dark:border-emerald-500/40', icon: Clock,        label: 'Pending' },
+  PARTIAL:   { color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-500/40',       icon: AlertCircle,  label: 'Partial' },
+  COMPLETED: { color: 'bg-green-100 dark:bg-emerald-900/30 text-green-800 dark:text-emerald-300 border-green-200 dark:border-emerald-600/30',    icon: CheckCircle2, label: 'Completed' },
+  CANCELLED: { color: 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-200 dark:border-red-500/40',          icon: XCircle,      label: 'Cancelled' },
 };
 
 const itemStatusConfig = {
-  PENDING:  { color: 'text-yellow-700 bg-yellow-50', label: 'Pending' },
-  ACCEPTED: { color: 'text-green-700 bg-green-50',   label: 'Accepted' },
-  REJECTED: { color: 'text-red-700 bg-red-50',       label: 'Rejected' },
+  PENDING:  { color: 'text-yellow-700 dark:text-emerald-300 bg-yellow-50 dark:bg-emerald-950/30 border border-transparent dark:border-emerald-500/30', label: 'Pending' },
+  ACCEPTED: { color: 'text-green-700 dark:text-emerald-300 bg-green-50 dark:bg-emerald-900/30',   label: 'Accepted' },
+  REJECTED: { color: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30',       label: 'Rejected' },
 };
 
 export default function TransfersPage() {

@@ -103,6 +103,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        mode: 'development',
+        sourcemap: false,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB
         runtimeCaching: [

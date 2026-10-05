@@ -513,7 +513,7 @@ const Inventory = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="font-semibold text-base">"{deleteTarget?.name}"</p>
-            <div className={`rounded-lg border p-3 text-sm space-y-1.5 ${deleteTarget?.isGlobal ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 text-amber-800 dark:text-amber-200' : 'bg-muted/50 border-muted text-foreground'}`}>
+            <div className={`rounded-lg border p-3 text-sm space-y-1.5 ${deleteTarget?.isGlobal ? 'bg-amber-50 dark:bg-emerald-950/20 border-amber-200 dark:border-emerald-500/40 text-amber-800 dark:text-emerald-200' : 'bg-muted/50 border-muted text-foreground'}`}>
               <p className="font-bold flex items-center gap-1.5">
                 {deleteTarget?.isGlobal ? <Globe className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                 {deleteTarget?.isGlobal ? 'Global Action (HQ)' : 'Local Branch Action'}

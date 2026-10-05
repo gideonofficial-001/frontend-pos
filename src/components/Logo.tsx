@@ -27,14 +27,14 @@ export function Logo({ className, size = 'md', variant = 'color', showText = tru
     dark: {
       flameOuter: '#ea580c',
       flameInner: '#f59e0b',
-      text: 'text-slate-900',
-      subtext: 'text-slate-500',
+      text: 'text-slate-900 dark:text-foreground',
+      subtext: 'text-slate-500 dark:text-muted-foreground',
     },
     color: {
       flameOuter: '#f97316',
       flameInner: '#fbbf24',
-      text: 'text-slate-900',
-      subtext: 'text-slate-500',
+      text: 'text-slate-900 dark:text-foreground',
+      subtext: 'text-slate-500 dark:text-muted-foreground',
     },
   };
 

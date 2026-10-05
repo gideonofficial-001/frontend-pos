@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store'
+import { useThemeStore } from '@/store/theme'
 import api from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut } from 'lucide-react'
+import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles } from 'lucide-react'
 
 const Settings = () => {
   const { user, token, setAuth, clearAuth } = useAuthStore()
+  const { theme, setTheme } = useThemeStore()
   
   // Profile State
   const [firstName, setFirstName] = useState(user?.firstName || '')
@@ -227,6 +229,87 @@ const Settings = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Theme & Appearance Card */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Palette className="w-5 h-5 text-primary" /> Appearance & Theme
+          </CardTitle>
+          <CardDescription>
+            Choose your preferred interface theme. Changes apply immediately across all screens.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Light Mode */}
+            <button
+              type="button"
+              onClick={() => setTheme('light')}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                theme === 'light'
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/30 bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                  <Sun className="w-5 h-5" />
+                </div>
+                {theme === 'light' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-foreground">Light Mode</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Crisp, clean daylight workspace</p>
+            </button>
+
+            {/* Dark Mode */}
+            <button
+              type="button"
+              onClick={() => setTheme('dark')}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                theme === 'dark'
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/30 bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <Moon className="w-5 h-5" />
+                </div>
+                {theme === 'dark' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-foreground">Dark Mode</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Classic slate with neon accents</p>
+            </button>
+
+            {/* Dark Jungle Green */}
+            <button
+              type="button"
+              onClick={() => setTheme('jungle')}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                theme === 'jungle'
+                  ? 'border-emerald-500 bg-emerald-950/30 shadow-sm'
+                  : 'border-border hover:border-muted-foreground/30 bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                {theme === 'jungle' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-foreground">Dark Jungle Green</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Cool emerald & deep forest shade</p>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Session Management Card */}
       <Card className="shadow-sm border-destructive/20">

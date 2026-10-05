@@ -23,14 +23,14 @@ type MpesaStatus = 'idle' | 'sending' | 'pending' | 'confirmed' | 'failed'
 type VerifyStatus = 'idle' | 'verifying' | 'verified' | 'unverified' | 'duplicate'
 
 const s = {
-  bg:         { backgroundColor: '#ffffff' },
-  text:       { color: '#111827' },
-  subtext:    { color: '#374151' },
-  inputStyle: { backgroundColor: '#ffffff', color: '#111827', borderColor: '#d1d5db' },
-  divider:    { borderColor: '#d1d5db' },
-  btnCancel:  { backgroundColor: '#374151', color: '#ffffff', border: 'none' },
-  btnWaiting: { backgroundColor: '#d1d5db', color: '#6b7280', border: 'none', cursor: 'not-allowed' },
-  btnConfirm: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none' },
+  bg:         {},
+  text:       {},
+  subtext:    {},
+  inputStyle: {},
+  divider:    {},
+  btnCancel:  {},
+  btnWaiting: {},
+  btnConfirm: {},
 } as const
 
 export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
@@ -189,20 +189,20 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-sm" style={s.bg}>
+      <DialogContent className="sm:max-w-sm bg-card text-card-foreground border">
         <DialogHeader>
-          <DialogTitle style={s.text}>Payment</DialogTitle>
+          <DialogTitle className="text-foreground">Payment</DialogTitle>
         </DialogHeader>
 
         {/* Total */}
-        <div className="rounded-xl bg-slate-900 text-white p-4 text-center">
+        <div className="rounded-xl bg-slate-900 dark:bg-emerald-950/60 text-white border border-slate-700 dark:border-emerald-500/30 p-4 text-center">
           <p className="text-sm opacity-70 uppercase tracking-wider">Total Due</p>
           <p className="text-3xl font-black">{formatCurrency(total)}</p>
         </div>
 
         {/* M-Pesa amount */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold flex items-center gap-2" style={s.text}>
+          <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
             <div className="w-7 h-7 rounded-full bg-green-600 flex items-center justify-center">
               <Smartphone className="w-4 h-4 text-white" />
             </div>
@@ -220,36 +220,34 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
               setMpesaRef('')
               setCustomerName(null)
             }}
-            style={s.inputStyle}
           />
         </div>
 
         {/* Cash amount */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold flex items-center gap-2" style={s.text}>
+          <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
             <div className="w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center">
               <Banknote className="w-4 h-4 text-white" />
             </div>
             Cash Amount (KES)
           </label>
-          <div className="h-10 px-3 flex items-center rounded-md border font-bold text-sm"
-            style={{ backgroundColor: '#f9fafb', color: '#111827', ...s.divider }}>
+          <div className="h-10 px-3 flex items-center rounded-md border font-bold text-sm bg-muted text-foreground">
             {formatCurrency(cashAmt)}
           </div>
         </div>
 
         {/* STK section */}
         {needsMpesa && (
-          <div className="border rounded-xl overflow-hidden" style={s.divider}>
-            <div className="px-4 py-2 bg-green-50 border-b flex items-center justify-between" style={s.divider}>
-              <span className="text-sm font-bold text-green-800">M-Pesa — {formatCurrency(mpesaAmt)}</span>
+          <div className="border rounded-xl overflow-hidden bg-card">
+            <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/40 border-b flex items-center justify-between">
+              <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">M-Pesa — {formatCurrency(mpesaAmt)}</span>
               {(mpesaConfirmed || verifyStatus === 'verified') && (
-                <span className="flex items-center gap-1 text-xs text-green-700 font-bold">
+                <span className="flex items-center gap-1 text-xs text-green-700 dark:text-emerald-300 font-bold">
                   <CheckCircle2 className="w-4 h-4" /> Confirmed
                 </span>
               )}
               {verifyStatus === 'unverified' && (
-                <span className="flex items-center gap-1 text-xs text-amber-700 font-bold">
+                <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-emerald-400 font-bold">
                   <ShieldAlert className="w-4 h-4" /> Unverified
                 </span>
               )}
@@ -294,14 +292,14 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
 
               {/* ── Manual unverified — logged for manager reconciliation ── */}
               {verifyStatus === 'unverified' && (
-                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                  <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-emerald-950/20 rounded-lg border border-amber-200 dark:border-emerald-500/40">
+                  <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-amber-800">Receipt not found in system</p>
-                    <p className="text-xs text-amber-700 mt-0.5">Logged for manager reconciliation. Proceed only if you physically confirmed payment.</p>
-                    <p className="text-xs font-mono text-amber-800 mt-1">{mpesaRef}</p>
+                    <p className="text-sm font-bold text-amber-800 dark:text-emerald-200">Receipt not found in system</p>
+                    <p className="text-xs text-amber-700 dark:text-emerald-300/80 mt-0.5">Logged for manager reconciliation. Proceed only if you physically confirmed payment.</p>
+                    <p className="text-xs font-mono text-amber-800 dark:text-emerald-200 mt-1">{mpesaRef}</p>
                   </div>
-                  <button className="text-amber-600 hover:text-amber-800 shrink-0" onClick={resetManual}>
+                  <button className="text-amber-600 hover:text-amber-800 dark:text-emerald-400 dark:hover:text-emerald-200 shrink-0" onClick={resetManual}>
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -309,13 +307,13 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
 
               {/* ── Duplicate receipt error ── */}
               {verifyStatus === 'duplicate' && (
-                <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-500/40">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-red-800">Receipt already used</p>
-                    <p className="text-xs text-red-700 mt-0.5">This receipt is linked to an existing sale. Do not proceed.</p>
+                    <p className="text-sm font-bold text-red-800 dark:text-red-300">Receipt already used</p>
+                    <p className="text-xs text-red-700 dark:text-red-300/80 mt-0.5">This receipt is linked to an existing sale. Do not proceed.</p>
                   </div>
-                  <button className="text-red-600 hover:text-red-800 shrink-0" onClick={resetManual}>
+                  <button className="text-red-600 hover:text-red-800 dark:text-red-400 shrink-0" onClick={resetManual}>
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -325,14 +323,13 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
               {!mpesaConfirmed && !isManualFlow && (
                 <>
                   <div>
-                    <p className="text-xs font-semibold mb-1" style={s.subtext}>Customer's Phone Number</p>
+                    <p className="text-xs font-semibold mb-1 text-muted-foreground">Customer's Phone Number</p>
                     <div className="flex gap-2">
                       <Input
                         type="tel" placeholder="0712 345 678"
                         value={phone}
                         onChange={(e) => { setPhone(e.target.value); setPhoneError('') }}
                         disabled={mpesaStatus === 'sending' || mpesaStatus === 'pending'}
-                        style={{ ...s.inputStyle, borderColor: phoneError ? '#ef4444' : '#d1d5db' }}
                       />
                       <Button
                         className="bg-green-600 hover:bg-green-700 text-white shrink-0"
@@ -346,19 +343,19 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
                   </div>
 
                   {mpesaStatus === 'pending' && (
-                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <div className="p-3 bg-amber-50 dark:bg-emerald-950/20 rounded-lg border border-amber-200 dark:border-emerald-500/40">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
-                          <Loader2 className="w-5 h-5 animate-spin text-amber-600 shrink-0" />
+                          <Loader2 className="w-5 h-5 animate-spin text-amber-600 dark:text-emerald-400 shrink-0" />
                           <div>
-                            <p className="text-sm font-bold text-amber-800">Waiting for payment…</p>
-                            <p className="text-xs text-amber-600">Customer should enter their PIN on phone</p>
+                            <p className="text-sm font-bold text-amber-800 dark:text-emerald-200">Waiting for payment…</p>
+                            <p className="text-xs text-amber-600 dark:text-emerald-400">Customer should enter their PIN on phone</p>
                           </div>
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs h-8 bg-white border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
+                          className="text-xs h-8 bg-card border-amber-300 dark:border-emerald-500/40 text-amber-900 dark:text-emerald-300 hover:bg-amber-100 dark:hover:bg-emerald-950/40 shrink-0"
                           onClick={() => checkStatus()}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" /> Check Now
@@ -368,16 +365,16 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
                   )}
 
                   {mpesaStatus === 'failed' && (
-                    <div className="p-3 bg-red-50 rounded-lg border border-red-200 space-y-2">
+                    <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-500/40 space-y-2">
                       <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                        <p className="text-xs text-red-700">{failureReason}</p>
+                        <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-700 dark:text-red-300">{failureReason}</p>
                       </div>
                       {checkoutRequestId && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full text-xs h-8 bg-white border-red-300 text-red-800 hover:bg-red-100"
+                          className="w-full text-xs h-8 bg-card border-red-300 dark:border-red-500/40 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/40"
                           onClick={() => {
                             setMpesaStatus('pending')
                             setPollCount(0)
@@ -393,7 +390,7 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
                   {/* Manual receipt — only shown after STK pending/failed */}
                   {(mpesaStatus === 'pending' || mpesaStatus === 'failed') && (
                     <div>
-                      <p className="text-xs font-semibold mb-1" style={s.subtext}>
+                      <p className="text-xs font-semibold mb-1 text-muted-foreground">
                         Or enter M-Pesa receipt code manually:
                       </p>
                       <div className="flex gap-2">
@@ -401,19 +398,15 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
                           placeholder="e.g. RCK1AB23DE"
                           value={mpesaReceiptInput}
                           onChange={(e) => setMpesaReceiptInput(e.target.value.toUpperCase())}
-                          style={{ ...s.inputStyle, fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                          className="font-mono uppercase tracking-wider"
                         />
-                        <button
+                        <Button
                           onClick={handleManualVerify}
-                          style={{
-                            backgroundColor: '#374151', color: '#ffffff',
-                            border: 'none', borderRadius: '6px',
-                            padding: '0 14px', fontSize: '13px', fontWeight: 600,
-                            cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}
+                          variant="secondary"
+                          className="shrink-0"
                         >
                           Verify
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -425,20 +418,16 @@ export function PaymentSplitModal({ total, onConfirm, onClose }: Props) {
 
         {/* Action buttons */}
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} style={{ ...s.btnCancel, flex: 1, height: '40px', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+          <Button variant="outline" onClick={onClose} className="flex-1 h-10">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleConfirm}
             disabled={confirmDisabled}
-            style={{
-              flex: 1, height: '40px', borderRadius: '8px', fontSize: '14px', fontWeight: 700,
-              cursor: confirmDisabled ? 'not-allowed' : 'pointer',
-              ...(confirmDisabled ? s.btnWaiting : s.btnConfirm),
-            }}
+            className="flex-1 h-10 font-bold"
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

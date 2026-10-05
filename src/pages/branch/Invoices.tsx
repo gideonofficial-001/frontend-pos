@@ -101,10 +101,10 @@ const Invoices = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PAID': return <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Paid</Badge>
-      case 'PENDING': return <Badge variant="outline" className="text-amber-600 border-amber-300">Pending</Badge>
+      case 'PENDING': return <Badge variant="outline" className="text-amber-600 dark:text-emerald-400 border-amber-300 dark:border-emerald-500/40">Pending</Badge>
       case 'SENT': return <Badge variant="secondary">Sent</Badge>
       case 'OVERDUE': return <Badge variant="destructive">Overdue</Badge>
-      case 'CANCELLED': return <Badge variant="destructive" className="bg-red-100 text-red-700 hover:bg-red-100">Cancelled</Badge>
+      case 'CANCELLED': return <Badge variant="destructive" className="bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 hover:bg-red-100">Cancelled</Badge>
       default: return <Badge>{status}</Badge>
     }
   }

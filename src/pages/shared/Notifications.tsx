@@ -263,7 +263,7 @@ const Notifications = () => {
                   key={notif.id}
                   className={`transition-all ${
                     notif.type === 'DEVICE_AUTH'
-                      ? 'border-amber-300 bg-amber-50/40'
+                      ? 'border-amber-300 dark:border-emerald-500/40 bg-amber-50/40 dark:bg-emerald-950/20'
                       : notif.status === 'UNREAD'
                       ? 'border-primary/50'
                       : ''
@@ -274,7 +274,7 @@ const Notifications = () => {
                     <div
                       className={`p-2 rounded-lg shrink-0 ${
                         notif.type === 'DEVICE_AUTH'
-                          ? 'bg-amber-100 text-amber-700'
+                          ? 'bg-amber-100 dark:bg-emerald-950/40 text-amber-700 dark:text-emerald-300'
                           : notif.type.startsWith('TRANSFER_')
                           ? 'bg-purple-100 text-purple-700'
                           : 'bg-muted'
@@ -296,16 +296,16 @@ const Notifications = () => {
                       {authCode && (
                         <div className="flex items-center gap-2 pt-1"
                           onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-2 bg-background border border-amber-300 rounded-lg px-3 py-1.5">
-                            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span className="font-mono text-xl font-bold tracking-[0.3em] text-amber-800">
+                          <div className="flex items-center gap-2 bg-background border border-amber-300 dark:border-emerald-500/40 rounded-lg px-3 py-1.5">
+                            <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-emerald-400 shrink-0" />
+                            <span className="font-mono text-xl font-bold tracking-[0.3em] text-amber-800 dark:text-emerald-300">
                               {authCode}
                             </span>
                           </div>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50"
+                            className="h-8 gap-1.5 border-amber-300 dark:border-emerald-500/40 text-amber-800 dark:text-emerald-300 hover:bg-amber-50 dark:hover:bg-emerald-950/40"
                             onClick={() => {
                               navigator.clipboard.writeText(authCode)
                               toast.success('Code copied to clipboard')
@@ -479,7 +479,7 @@ const Notifications = () => {
                   const locationStr = locationParts.length > 0 ? locationParts.join(', ') : null
 
                   return (
-                    <Card key={device.id} className="border-amber-200 bg-amber-50/30">
+                    <Card key={device.id} className="border-amber-200 dark:border-emerald-500/40 bg-amber-50/30 dark:bg-emerald-950/20">
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
@@ -506,8 +506,8 @@ const Notifications = () => {
 
                         {locationStr && (
                           <div className="flex items-center gap-1.5 text-sm font-medium">
-                            <MapPin className="w-4 h-4 shrink-0 text-amber-600" />
-                            <span>Logging in from <span className="text-amber-700">{locationStr}</span></span>
+                            <MapPin className="w-4 h-4 shrink-0 text-amber-600 dark:text-emerald-400" />
+                            <span>Logging in from <span className="text-amber-700 dark:text-emerald-300">{locationStr}</span></span>
                           </div>
                         )}
 
@@ -598,8 +598,8 @@ const Notifications = () => {
                 <span>Code emailed to <strong>{approvedDevice.userEmail}</strong></span>
               </div>
             ) : (
-              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                <MailX className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 text-sm text-amber-800 dark:text-emerald-300 bg-amber-50 dark:bg-emerald-950/20 border border-amber-200 dark:border-emerald-500/40 rounded-md px-3 py-2">
+                <MailX className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-emerald-400" />
                 <span>{approvedDevice?.emailError ?? 'Email not sent — share the code below directly.'}</span>
               </div>
             )}

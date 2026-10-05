@@ -47,6 +47,28 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
+
+  .theme-jungle {
+    --background: 164 48% 6%;
+    --foreground: 160 25% 96%;
+    --card: 164 40% 9.5%;
+    --card-foreground: 160 25% 96%;
+    --popover: 164 40% 9.5%;
+    --popover-foreground: 160 25% 96%;
+    --primary: 156 72% 43%;
+    --primary-foreground: 164 80% 5%;
+    --secondary: 164 30% 15%;
+    --secondary-foreground: 160 25% 95%;
+    --muted: 164 28% 14%;
+    --muted-foreground: 160 15% 65%;
+    --accent: 164 30% 17%;
+    --accent-foreground: 160 25% 96%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 164 30% 17%;
+    --input: 164 30% 17%;
+    --ring: 156 75% 50%;
+  }
 }
 
 @layer base {
@@ -55,6 +77,17 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Subtle neon green outline in dark mode & jungle theme replacing bright yellowish border outlines */
+  .dark .border-yellow-200,
+  .dark .border-yellow-300,
+  .dark .border-yellow-400,
+  .dark .border-amber-200,
+  .dark .border-amber-300,
+  .dark .border-amber-400,
+  .dark .border-orange-100 {
+    border-color: rgba(52, 211, 153, 0.45) !important;
   }
 }
 
@@ -75,4 +108,12 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.theme-jungle ::-webkit-scrollbar-thumb {
+  background: hsl(156 40% 30% / 0.4);
+}
+
+.theme-jungle ::-webkit-scrollbar-thumb:hover {
+  background: hsl(156 50% 40% / 0.6);
 }

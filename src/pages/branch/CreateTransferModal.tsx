@@ -249,18 +249,18 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
         <DialogContent className="max-w-[90vw] lg:max-w-md rounded-xl">
           <DialogHeader><DialogTitle className="text-lg">Transfer Setup: {selectedInvItem?.product?.name}</DialogTitle></DialogHeader>
           <div className="grid gap-2 lg:gap-3 py-2">
-            <Button variant="outline" className="h-12 lg:h-14 justify-between px-3 lg:px-4 border-blue-200 hover:bg-blue-50"
+            <Button variant="outline" className="h-12 lg:h-14 justify-between px-3 lg:px-4 border-blue-200 dark:border-blue-500/40 hover:bg-blue-50 dark:hover:bg-blue-950/20"
               disabled={(selectedInvItem?.fullCylinders || 0) === 0}
               onClick={() => handleAddItem(selectedInvItem.product, 'REFILL', '(Gas Refill)', selectedInvItem.fullCylinders)}
             >
               <div className="flex items-center text-sm lg:text-base"><Flame className="w-4 h-4 mr-2 text-blue-500"/> Gas Refill Only</div>
               <Badge variant="secondary">{selectedInvItem?.fullCylinders || 0} left</Badge>
             </Button>
-            <Button variant="outline" className="h-12 lg:h-14 justify-between px-3 lg:px-4 border-amber-200 hover:bg-amber-50"
+            <Button variant="outline" className="h-12 lg:h-14 justify-between px-3 lg:px-4 border-amber-200 dark:border-emerald-500/40 hover:bg-amber-50 dark:hover:bg-emerald-950/20"
               disabled={((selectedInvItem?.quantity || 0) - (selectedInvItem?.fullCylinders || 0)) <= 0}
               onClick={() => handleAddItem(selectedInvItem.product, 'EMPTY_SHELL', '(Empty Shell)', (selectedInvItem.quantity - (selectedInvItem.fullCylinders || 0)))}
             >
-              <div className="flex items-center text-sm lg:text-base"><Package className="w-4 h-4 mr-2 text-amber-600"/> Empty Shell Only</div>
+              <div className="flex items-center text-sm lg:text-base"><Package className="w-4 h-4 mr-2 text-amber-600 dark:text-emerald-400"/> Empty Shell Only</div>
               <Badge variant="secondary">{Math.max(0, (selectedInvItem?.quantity || 0) - (selectedInvItem?.fullCylinders || 0))} left</Badge>
             </Button>
             <Button className="h-12 lg:h-14 justify-between px-3 lg:px-4 bg-purple-600 hover:bg-purple-700"

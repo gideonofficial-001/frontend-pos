@@ -73,11 +73,11 @@ const BranchDashboard = () => {
       </div>
 
       {pendingData && (pendingData.pendingTransfers > 0 || pendingData.pendingExpenses > 0) && (
-        <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+        <Card className="border-yellow-200 dark:border-emerald-500/40 bg-yellow-50 dark:bg-emerald-950/20">
           <CardContent className="flex items-center gap-4 py-4">
-            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-emerald-400" />
             <div>
-              <p className="font-medium text-yellow-800 dark:text-yellow-200">
+              <p className="font-medium text-yellow-800 dark:text-emerald-200">
                 Pending items: {pendingData.pendingTransfers > 0 && `${pendingData.pendingTransfers} transfers`}
                 {pendingData.pendingExpenses > 0 && ` ${pendingData.pendingExpenses} expenses`}
               </p>
@@ -95,10 +95,10 @@ const BranchDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Today's Sales</p>
-                <p className="text-3xl font-black mt-1 text-slate-800">{stats?.todaySales || 0}</p>
+                <p className="text-3xl font-black mt-1 text-foreground">{stats?.todaySales || 0}</p>
               </div>
-              <div className="p-3 rounded-xl bg-blue-100/50">
-                <ShoppingCart className="w-6 h-6 text-blue-600" />
+              <div className="p-3 rounded-xl bg-blue-100/50 dark:bg-blue-950/40">
+                <ShoppingCart className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>
@@ -110,12 +110,12 @@ const BranchDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Revenue</p>
-                <p className="text-2xl font-black mt-1 text-emerald-600">
+                <p className="text-2xl font-black mt-1 text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(branchSales?.reduce((sum: number, s: any) => sum + Number(s.total), 0))}
                 </p>
               </div>
-              <div className="p-3 rounded-xl bg-emerald-100/50">
-                <TrendingUp className="w-6 h-6 text-emerald-600" />
+              <div className="p-3 rounded-xl bg-emerald-100/50 dark:bg-emerald-950/40">
+                <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
             </div>
           </CardContent>
@@ -127,54 +127,54 @@ const BranchDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">My Invoices</p>
-                <p className="text-3xl font-black mt-1 text-slate-800">{myPendingInvoices}</p>
+                <p className="text-3xl font-black mt-1 text-foreground">{myPendingInvoices}</p>
               </div>
-              <div className="p-3 rounded-xl bg-yellow-100/50">
-                <FileText className="w-6 h-6 text-yellow-600" />
+              <div className="p-3 rounded-xl bg-yellow-100/50 dark:bg-yellow-950/40">
+                <FileText className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* 🚀 NEW: 6Kg Inventory */}
-        <Card className="border-orange-100">
+        <Card className="border-orange-100 dark:border-orange-500/20">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold text-orange-900/60 uppercase tracking-wider">6Kg Inventory</p>
+                <p className="text-sm font-bold text-orange-900/60 dark:text-orange-400 uppercase tracking-wider">6Kg Inventory</p>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <p className="text-3xl font-black text-orange-600">{sixKgRefills}</p>
-                  <p className="text-xs font-semibold text-orange-600/70 uppercase">Refills</p>
+                  <p className="text-3xl font-black text-orange-600 dark:text-orange-400">{sixKgRefills}</p>
+                  <p className="text-xs font-semibold text-orange-600/70 dark:text-orange-400/80 uppercase">Refills</p>
                 </div>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <p className="text-xl font-bold text-slate-600">{sixKgEmpties}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Empties</p>
+                  <p className="text-xl font-bold text-muted-foreground">{sixKgEmpties}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground/80 uppercase">Empties</p>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-orange-100">
-                <Flame className="w-5 h-5 text-orange-600" />
+              <div className="p-3 rounded-xl bg-orange-100 dark:bg-orange-950/40">
+                <Flame className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* 🚀 NEW: 13Kg Inventory */}
-        <Card className="border-indigo-100">
+        <Card className="border-indigo-100 dark:border-indigo-500/20">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold text-indigo-900/60 uppercase tracking-wider">13Kg Inventory</p>
+                <p className="text-sm font-bold text-indigo-900/60 dark:text-indigo-400 uppercase tracking-wider">13Kg Inventory</p>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <p className="text-3xl font-black text-indigo-600">{thirteenKgRefills}</p>
-                  <p className="text-xs font-semibold text-indigo-600/70 uppercase">Refills</p>
+                  <p className="text-3xl font-black text-indigo-600 dark:text-indigo-400">{thirteenKgRefills}</p>
+                  <p className="text-xs font-semibold text-indigo-600/70 dark:text-indigo-400/80 uppercase">Refills</p>
                 </div>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <p className="text-xl font-bold text-slate-600">{thirteenKgEmpties}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Empties</p>
+                  <p className="text-xl font-bold text-muted-foreground">{thirteenKgEmpties}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground/80 uppercase">Empties</p>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-indigo-100">
-                <Flame className="w-5 h-5 text-indigo-600" />
+              <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-950/40">
+                <Flame className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               </div>
             </div>
           </CardContent>

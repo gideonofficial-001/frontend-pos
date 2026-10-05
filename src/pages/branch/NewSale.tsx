@@ -324,10 +324,10 @@ const NewSale = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1 text-xs border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100"
+                    className="h-8 gap-1 text-xs border-amber-300 dark:border-emerald-500/40 text-amber-800 dark:text-emerald-300 bg-amber-50 dark:bg-emerald-950/30 hover:bg-amber-100 dark:hover:bg-emerald-950/50"
                     onClick={() => setParkedModalOpen(true)}
                   >
-                    <Bookmark className="w-3.5 h-3.5 text-amber-600" />
+                    <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-emerald-400" />
                     Parked ({parkedCarts.length})
                   </Button>
                 )}
@@ -445,12 +445,12 @@ const NewSale = () => {
 
                 {/* Customer select — invoice & wholesale */}
                 {requiresCustomer && (
-                  <div className="space-y-1.5 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <Label className="text-xs font-bold text-amber-900 uppercase tracking-wider">Select Customer (Required)</Label>
+                  <div className="space-y-1.5 p-3 bg-amber-50 dark:bg-emerald-950/20 border border-amber-200 dark:border-emerald-500/40 rounded-lg">
+                    <Label className="text-xs font-bold text-amber-900 dark:text-emerald-300 uppercase tracking-wider">Select Customer (Required)</Label>
                     <select
                       value={selectedCustomerId}
                       onChange={(e) => setSelectedCustomerId(e.target.value)}
-                      className="w-full p-2.5 border border-amber-300 rounded-md text-sm bg-card focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none"
+                      className="w-full p-2.5 border border-amber-300 dark:border-emerald-500/40 rounded-md text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-emerald-500/60 appearance-none"
                     >
                       <option value="">-- Choose a customer --</option>
                       {customers.map((c: any) => (
@@ -513,8 +513,8 @@ const NewSale = () => {
               <Flame className="w-5 h-5 mr-3 text-blue-500" />
               <div className="flex-1"><div className="flex justify-between w-full"><p className="font-bold">Gas Refill Only</p><span className="text-xs font-medium text-blue-600">{selectedInvItem?.fullCylinders} left</span></div><p className="text-xs text-muted-foreground">Customer returns empty shell</p></div>
             </Button>
-            <Button variant="outline" className={`h-16 justify-start text-left px-4 ${(selectedInvItem?.emptyCylinders <= 0 || selectedInvItem?.product?.emptyPrice == null) ? 'opacity-50' : 'hover:border-amber-400'}`} onClick={() => handleLpgSelect('EMPTY_SHELL')} disabled={selectedInvItem?.emptyCylinders <= 0 || selectedInvItem?.product?.emptyPrice == null}>
-              <Package className="w-5 h-5 mr-3 text-amber-600" />
+            <Button variant="outline" className={`h-16 justify-start text-left px-4 ${(selectedInvItem?.emptyCylinders <= 0 || selectedInvItem?.product?.emptyPrice == null) ? 'opacity-50' : 'hover:border-amber-400 dark:hover:border-emerald-400/60'}`} onClick={() => handleLpgSelect('EMPTY_SHELL')} disabled={selectedInvItem?.emptyCylinders <= 0 || selectedInvItem?.product?.emptyPrice == null}>
+              <Package className="w-5 h-5 mr-3 text-amber-600 dark:text-emerald-400" />
               <div className="flex-1"><div className="flex justify-between w-full"><p className="font-bold">Empty Cylinder</p><span className="text-xs font-medium text-amber-600">{Math.max(0, selectedInvItem?.emptyCylinders || 0)} left</span></div><p className="text-xs text-muted-foreground">{saleType === SaleType.WHOLESALE ? (selectedInvItem?.product?.wholesaleEmptyPrice ? formatCurrency(selectedInvItem.product.wholesaleEmptyPrice) : 'price not set') : (selectedInvItem?.product?.emptyPrice != null ? formatCurrency(selectedInvItem.product.emptyPrice) : 'price not set')}</p></div>
             </Button>
             <Button className={`h-16 justify-start text-left px-4 ${(selectedInvItem?.fullCylinders === 0 || selectedInvItem?.product?.emptyPrice == null) ? 'opacity-50' : ''}`} onClick={() => handleLpgSelect('COMPLETE_SET')} disabled={selectedInvItem?.fullCylinders === 0 || selectedInvItem?.product?.emptyPrice == null}>
