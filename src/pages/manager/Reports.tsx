@@ -5,10 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Package, DollarSign } from 'lucide-react'
+import { TrendingUp, Package, DollarSign, CalendarCheck } from 'lucide-react'
+import { DailySalesLiveTab } from '@/components/reports/DailySalesLiveTab'
+import { ArchivedDailyReportsTab } from '@/components/reports/ArchivedDailyReportsTab'
 
 const Reports = () => {
   const [days, setDays] = useState(30)
+  const [dailySubTab, setDailySubTab] = useState<'live' | 'archived'>('live')
 
   const { data: salesTrend } = useQuery({
     queryKey: ['sales-trend', days],
@@ -41,12 +44,32 @@ const Reports = () => {
         <p className="text-muted-foreground">Business analytics and insights</p>
       </div>
 
-      <Tabs defaultValue="sales">
+      <Tabs defaultValue="daily">
         <TabsList>
+          <TabsTrigger value="daily">Daily Reports</TabsTrigger>
           <TabsTrigger value="sales">Sales Trend</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="daily" className="space-y-4">
+          <div className="flex p-1 bg-muted/60 rounded-lg border w-fit">
+            <button
+              onClick={() => setDailySubTab('live')}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${dailySubTab === 'live' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}
+            >
+              Live Today
+            </button>
+            <button
+              onClick={() => setDailySubTab('archived')}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${dailySubTab === 'archived' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}
+            >
+              Archived Statements
+            </button>
+          </div>
+
+          {dailySubTab === 'live' ? <DailySalesLiveTab /> : <ArchivedDailyReportsTab />}
+        </TabsContent>
 
         <TabsContent value="sales" className="space-y-4">
           <div className="flex gap-2">

@@ -254,6 +254,12 @@ export const reportsApi = {
   getExpenseReport: (startDate?: string, endDate?: string) =>
     api.get('/reports/expenses', { params: { startDate, endDate } }),
   getInventoryValuation: () => api.get('/reports/inventory-valuation'),
+  getLiveDailySales: (branchId?: string, date?: string) =>
+    api.get('/reports/daily/live', { params: { branchId, date } }),
+  archiveDailyReport: (branchId: string, date?: string) =>
+    api.post('/reports/daily/archive', { branchId, date }),
+  getArchivedDailyReports: (branchId?: string, startDate?: string, endDate?: string) =>
+    api.get('/reports/daily/archived', { params: { branchId, startDate, endDate } }),
 }
 
 // ── Activity Feed ─────────────────────────────────────────────────────────────

@@ -188,9 +188,19 @@ const Login = () => {
         )}
 
         {error && (
-          <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{error}</span>
+          <div className="mb-4 space-y-2">
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+            {error.toLowerCase().includes('lock') && (
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                <p className="font-semibold text-foreground">Need Assistance?</p>
+                <p className="mt-1">
+                  For account security, repeated failed attempts temporarily lock access. If you need an immediate unlock or password reset, please contact the System Administrator.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

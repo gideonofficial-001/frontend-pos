@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import { ShoppingCart, TrendingUp, FileText, AlertTriangle, Flame } from 'lucide-react'
+import { DailySalesSummaryTable } from '@/components/dashboard/DailySalesSummaryTable'
 
 const BranchDashboard = () => {
   const { user } = useAuthStore()
   const navigate = useNavigate()
 
   // 1. Existing general stats
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const response = await reportsApi.getDashboardStats()
@@ -111,11 +112,14 @@ const BranchDashboard = () => {
         </Card>
       )}
 
-      {/* Grid updated to 5 columns for large screens to accommodate both gas sizes smoothly */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      {/* Grid updated with DailySalesSummaryTable */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         
+        {/* Daily Sales Summary Table */}
+        <DailySalesSummaryTable summary={stats?.todaySummary} isLoading={statsLoading} />
+
         {/* Today's Sales */}
-        <Card>
+        <Card className="flex flex-col justify-center">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -129,25 +133,8 @@ const BranchDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Revenue */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Revenue</p>
-                <p className="text-2xl font-black mt-1 text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(branchSales?.reduce((sum: number, s: any) => sum + Number(s.total), 0))}
-                </p>
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-100/50 dark:bg-emerald-950/40">
-                <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Invoices */}
-        <Card>
+        <Card className="flex flex-col justify-center">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -162,7 +149,7 @@ const BranchDashboard = () => {
         </Card>
 
         {/* 🚀 NEW: 6Kg Inventory */}
-        <Card className="border-orange-100 dark:border-orange-500/20">
+        <Card className="border-orange-100 dark:border-orange-500/20 col-span-1 md:col-span-1 xl:col-span-2">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
@@ -184,7 +171,7 @@ const BranchDashboard = () => {
         </Card>
 
         {/* 🚀 NEW: 13Kg Inventory */}
-        <Card className="border-indigo-100 dark:border-indigo-500/20">
+        <Card className="border-indigo-100 dark:border-indigo-500/20 col-span-1 md:col-span-1 xl:col-span-2">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>

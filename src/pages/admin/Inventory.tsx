@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PackageSearch, AlertTriangle, Store, ArrowLeft, Plus, Trash2, Settings2, DollarSign, Globe, MapPin, Pin, SlidersHorizontal } from 'lucide-react'
+import { PackageSearch, AlertTriangle, Store, ArrowLeft, Plus, Trash2, Settings2, DollarSign, Globe, MapPin, Pin, SlidersHorizontal, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── LOCAL ZUSTAND STORE FOR CATEGORY PINNING ─────────────────────────────────
@@ -57,6 +57,8 @@ const Inventory = () => {
   const [adjustReason, setAdjustReason] = useState('')
 
   const [isEditPriceOpen, setIsEditPriceOpen] = useState(false)
+  const [editProductName, setEditProductName] = useState('')
+  const [editProductDescription, setEditProductDescription] = useState('')
   const [editPrice, setEditPrice] = useState<number>(0)
   const [editEmptyPrice, setEditEmptyPrice] = useState<number>(0)
   const [editWholesalePrice, setEditWholesalePrice] = useState<number>(0)
@@ -110,13 +112,20 @@ const Inventory = () => {
 
   const updatePriceMutation = useMutation({
     mutationFn: async (data: any) =>
-      await productsApi.update(data.id, { price: data.price, emptyPrice: data.emptyPrice, wholesalePrice: data.wholesalePrice, wholesaleEmptyPrice: data.wholesaleEmptyPrice }),
+      await productsApi.update(data.id, {
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        emptyPrice: data.emptyPrice,
+        wholesalePrice: data.wholesalePrice,
+        wholesaleEmptyPrice: data.wholesaleEmptyPrice,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', activeBranchId] })
       setIsEditPriceOpen(false)
-      toast.success('Prices updated successfully')
+      toast.success('Product updated successfully')
     },
-    onError: (error: any) => toast.error(error?.response?.data?.message || 'Failed to update prices')
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'Failed to update product')
   })
 
   const deleteProductMutation = useMutation({
@@ -455,9 +464,12 @@ const Inventory = () => {
                                   <TableCell className="text-right pr-4">
                                     <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <Button
-                                        variant="ghost" size="icon" className="h-8 w-8 hover:bg-green-50"
+                                        variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-50 text-emerald-700"
+                                        title="Edit Product & Pricing"
                                         onClick={() => {
                                           setSelectedItem(item)
+                                          setEditProductName(item.product.name)
+                                          setEditProductDescription(item.product.description || '')
                                           setEditPrice(Number(item.product.price))
                                           setEditEmptyPrice(Number(item.product.emptyPrice || 0))
                                           setEditWholesalePrice(Number(item.product.wholesalePrice || item.product.price))
@@ -465,7 +477,7 @@ const Inventory = () => {
                                           setIsEditPriceOpen(true)
                                         }}
                                       >
-                                        <DollarSign className="w-4 h-4 text-green-600" />
+                                        <Pencil className="w-4 h-4 text-emerald-600" />
                                       </Button>
                                       <Button
                                         variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50"
@@ -624,11 +636,31 @@ const Inventory = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Price Dialog */}
+      {/* Edit Product Details & Pricing Dialog (Super Admin only) */}
       <Dialog open={isEditPriceOpen} onOpenChange={setIsEditPriceOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Edit Pricing: {selectedItem?.product?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-6 py-4">
+          <DialogHeader><DialogTitle>Edit Product: {selectedItem?.product?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-3">
+            {/* Product Details (Name & Description) */}
+            <div className="space-y-3 bg-muted/10 p-3 rounded-lg border">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Name *</label>
+                <Input
+                  value={editProductName}
+                  onChange={(e) => setEditProductName(e.target.value)}
+                  placeholder="Product Name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description (Optional)</label>
+                <Input
+                  value={editProductDescription}
+                  onChange={(e) => setEditProductDescription(e.target.value)}
+                  placeholder="Product Description"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 bg-muted/20 p-3 rounded-lg border">
               <div className="space-y-2 col-span-2"><h4 className="text-sm font-bold text-muted-foreground uppercase">Retail Pricing</h4></div>
               <div className="space-y-2">
@@ -658,14 +690,19 @@ const Inventory = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditPriceOpen(false)}>Cancel</Button>
-            <Button onClick={() => updatePriceMutation.mutate({
-              id: selectedItem.product.id,
-              price: editPrice,
-              emptyPrice: isSelectedLpg ? editEmptyPrice : undefined,
-              wholesalePrice: editWholesalePrice,
-              wholesaleEmptyPrice: isSelectedLpg ? editWholesaleEmptyPrice : undefined
-            })}>
-              {updatePriceMutation.isPending ? 'Updating...' : 'Save Prices'}
+            <Button
+              disabled={!editProductName.trim() || updatePriceMutation.isPending}
+              onClick={() => updatePriceMutation.mutate({
+                id: selectedItem.product.id,
+                name: editProductName.trim(),
+                description: editProductDescription.trim() || undefined,
+                price: editPrice,
+                emptyPrice: isSelectedLpg ? editEmptyPrice : undefined,
+                wholesalePrice: editWholesalePrice,
+                wholesaleEmptyPrice: isSelectedLpg ? editWholesaleEmptyPrice : undefined
+              })}
+            >
+              {updatePriceMutation.isPending ? 'Updating...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

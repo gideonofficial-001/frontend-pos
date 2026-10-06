@@ -307,6 +307,12 @@ export default function AdminDevices() {
                         <span>{device.loginIpAddress}</span>
                       </div>
                     )}
+                    {device.isp && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">ISP:</span>
+                        <span className="truncate">{device.isp}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 shrink-0" />
                       <span title={formatDateTime(device.createdAt)}>

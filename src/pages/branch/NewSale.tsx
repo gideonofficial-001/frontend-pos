@@ -172,54 +172,6 @@ const NewSale = () => {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create sale'),
   })
 
-  const handleStkComplete = (sale: any) => {
-    setSplitModalOpen(false)
-    const itemsSnapshot = items.map(item => {
-      const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
-      const label = lpgVariant === 'REFILL' ? ' (Refill)' : lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
-      return {
-        name: `${item.product.name}${label}${item.cylinderSerial ? ` [${item.cylinderSerial}]` : ''}`,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        discount: item.discount,
-        total: item.total,
-      }
-    })
-
-    const customerObj = customers.find((c: any) => c.id === sale.customerId)
-
-    setCompletedReceipt({
-      saleCode: sale.saleCode,
-      date: new Date(sale.createdAt || Date.now()).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      branchName: sale?.branch?.name || user?.branchId || 'Branch',
-      cashierName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Cashier',
-      customerName: customerObj?.name || sale?.customer?.name || pendingSaleData?.customerName || undefined,
-      customerPhone: customerObj?.phone || sale?.customer?.phone || undefined,
-      saleType: sale.type,
-      items: itemsSnapshot,
-      subtotal: getSubtotal(),
-      totalDiscount: getTotalDiscount(),
-      total: getTotal(),
-      payments: sale.payments && sale.payments.length > 0 ? sale.payments : [{ method: 'MPESA', amount: getTotal() }],
-    })
-
-    toast.success(`Sale completed via M-Pesa! Code: ${sale.saleCode}`)
-    clearCart()
-    setSearch('')
-    setSelectedCustomerId('')
-    setCustomerName('')
-    setSaleType(SaleType.CASH)
-    setDiscountOpenFor(null)
-    setPendingSaleData(null)
-    setManagerOverrideCode('')
-    setDiscountReason('')
-    queryClient.invalidateQueries({ queryKey: ['sales'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-    queryClient.invalidateQueries({ queryKey: ['inventory'] })
-    queryClient.invalidateQueries({ queryKey: ['customers'] })
-    queryClient.invalidateQueries({ queryKey: ['invoices'] })
-  }
-
   const filteredInventory = inventory?.filter((inv: any) => {
     if (!inv.product?.isActive) return false
     const isLpg = inv.product.type === 'LPG_REFILL' || inv.product.type === 'LPG_CYLINDER'
@@ -620,7 +572,6 @@ const NewSale = () => {
           total={total}
           pendingSaleData={pendingSaleData}
           onConfirm={handlePaymentConfirm}
-          onStkComplete={handleStkComplete}
           onClose={() => { setSplitModalOpen(false); setPendingSaleData(null) }}
         />
       )}
