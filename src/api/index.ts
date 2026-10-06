@@ -76,6 +76,10 @@ export const usersApi = {
     api.get('/users/login-activity/suspicious', { params: { days } }),
   getAllLoginActivity: (days = 7, userId?: string) =>
     api.get('/users/login-activity/all', { params: { days, userId } }),
+  setPettyCash: (userId: string, dailyPettyCash: number) =>
+    api.patch(`/users/${userId}/petty-cash`, { dailyPettyCash }),
+  getPettyCashAllocations: () =>
+    api.get('/users/petty-cash/allocations'),
 }
 
 // ── Branches ──────────────────────────────────────────────────────────────────
@@ -195,6 +199,10 @@ export const expensesApi = {
   approve: (id: string) => api.patch(`/expenses/${id}/approve`),
   reject: (id: string, rejectionReason: string) =>
     api.patch(`/expenses/${id}/reject`, { rejectionReason }),
+  setPettyCash: (userId: string, dailyPettyCash: number) =>
+    api.patch(`/users/${userId}/petty-cash`, { dailyPettyCash }),
+  getPettyCashAllocations: () =>
+    api.get('/users/petty-cash/allocations'),
 }
 
 // ── Transfers ─────────────────────────────────────────────────────────────────

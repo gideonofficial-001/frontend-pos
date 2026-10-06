@@ -149,6 +149,7 @@ function App() {
           <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AuditLogs /></ProtectedRoute>} />
           <Route path="/admin/devices" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AdminDevices /></ProtectedRoute>} />
           <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><Reports /></ProtectedRoute>} />
+          <Route path="/admin/expenses" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><Expenses /></ProtectedRoute>} />
 
           {/* Admin & Manager Routes */}
           <Route path="/inventory" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><Inventory /></ProtectedRoute>} />
@@ -167,7 +168,7 @@ function App() {
           <Route path="/branch/invoices" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><Invoices /></ProtectedRoute>} />
           <Route path="/branch/returns" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><ReturnsPage /></ProtectedRoute>} />
           <Route path="/branch/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><SalesHistory /></ProtectedRoute>} />
-          <Route path="/branch/expenses" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><Expenses /></ProtectedRoute>} />
+          <Route path="/branch/expenses" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]}><Expenses /></ProtectedRoute>} />
           <Route path="/branch/transfers" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><TransfersPage /></ProtectedRoute>} />
           <Route path="/admin/transfers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><TransfersPage /></ProtectedRoute>} />
 

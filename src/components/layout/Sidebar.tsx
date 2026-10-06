@@ -48,6 +48,7 @@ const Sidebar = () => {
         { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
         { path: '/admin/sales-history', icon: History, label: 'Sales History' },
         { path: '/admin/returns', icon: RotateCcw, label: 'Returns' },
+        { path: '/admin/expenses', icon: Receipt, label: 'Expenses' },
         { path: '/admin/transfers', icon: ArrowLeftRight, label: 'Transfers' },
         { path: '/admin/devices',   icon: Smartphone,    label: 'Devices' },
         { path: '/admin/reports',   icon: BarChart3,     label: 'Reports' },
