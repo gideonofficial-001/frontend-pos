@@ -295,7 +295,7 @@ const NewSale = () => {
   const handlePaymentConfirm = (payments: PaymentEntry[]) => {
     setSplitModalOpen(false)
     if (pendingSaleData) {
-      createSaleMutation.mutate({ ...pendingSaleData, payments, isStkPending: false })
+      createSaleMutation.mutate({ ...pendingSaleData, payments })
     }
   }
 

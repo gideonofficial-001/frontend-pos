@@ -92,17 +92,33 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
     try {
       let reqId = ''
       if (pendingSaleData) {
-        const salePayload = {
-          ...pendingSaleData,
-          payments: [
-            { method: 'MPESA', amount: mpesaAmt, phoneNumber: formatted },
-            ...(cashAmt > 0 ? [{ method: 'CASH', amount: cashAmt }] : []),
-          ],
-          isStkPending: true,
+        try {
+          const salePayload = {
+            ...pendingSaleData,
+            payments: [
+              { method: 'MPESA', amount: mpesaAmt, phoneNumber: formatted },
+              ...(cashAmt > 0 ? [{ method: 'CASH', amount: cashAmt }] : []),
+            ],
+            isStkPending: true,
+            phoneNumber: formatted,
+          }
+          const res = await salesApi.create(salePayload)
+          reqId = res.data.checkoutRequestId
+          setPendingSaleId(res.data.id)
+        } catch (saleErr: any) {
+          const errMsg = saleErr.response?.data?.message
+          const isDtoRejection = Array.isArray(errMsg)
+            ? errMsg.some((m: string) => typeof m === 'string' && m.includes('should not exist'))
+            : typeof errMsg === 'string' && errMsg.includes('should not exist')
+
+          if (isDtoRejection) {
+            console.warn('Backend rejected pending sale DTO fields, falling back to direct STK push:', errMsg)
+            const res = await mpesaApi.stkPush(formatted, mpesaAmt)
+            reqId = res.data.checkoutRequestId
+          } else {
+            throw saleErr
+          }
         }
-        const res = await salesApi.create(salePayload)
-        reqId = res.data.checkoutRequestId
-        setPendingSaleId(res.data.id)
       } else {
         const res = await mpesaApi.stkPush(formatted, mpesaAmt)
         reqId = res.data.checkoutRequestId
