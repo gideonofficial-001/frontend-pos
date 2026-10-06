@@ -439,6 +439,18 @@ export default function ClosingStock() {
                         </div>
                       )}
                     </div>
+                  ) : user?.role === 'OVERALL_MANAGER' ? (
+                    <div className="p-5 border rounded-xl bg-card space-y-2">
+                      <div className="flex items-center gap-2 text-foreground font-bold text-sm">
+                        <Clock className="w-4 h-4 text-amber-500" />
+                        Today's Cash Drawer In Progress — Read-Only Mode
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        As Overall Manager, you have monitoring access across all branches. The cash drawer for{' '}
+                        <strong>{activeBranch?.name || 'this branch'}</strong> is currently open and has not been closed yet.
+                        Only the local branch manager counts physical cash and submits the daily closing. You can review today's live expected figures above and past reconciliation history below.
+                      </p>
+                    </div>
                   ) : (
                     /* Submission Form */
                     <form onSubmit={handleClosingSubmit} className="space-y-4 p-5 border rounded-xl bg-card">

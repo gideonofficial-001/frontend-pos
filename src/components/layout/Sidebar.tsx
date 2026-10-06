@@ -29,7 +29,7 @@ const Sidebar = () => {
     if (!user) return []
     const items = []
 
-    if (user.role !== UserRole.SUPER_ADMIN && !user.branchId) {
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.OVERALL_MANAGER && !user.branchId) {
       return [
         { path: '/unassigned', icon: Building2, label: 'Branch Assignment' },
         { path: '/settings', icon: Settings, label: 'Settings' },

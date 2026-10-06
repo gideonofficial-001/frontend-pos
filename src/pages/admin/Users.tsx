@@ -299,7 +299,11 @@ const Users = () => {
                 <Label>Role</Label>
                 <Select 
                   value={editForm.role} 
-                  onValueChange={v => setEditForm({...editForm, role: v})}
+                  onValueChange={v => setEditForm({
+                    ...editForm,
+                    role: v,
+                    branchId: v === UserRole.OVERALL_MANAGER ? 'none' : editForm.branchId
+                  })}
                   disabled={editUser?.role === UserRole.SUPER_ADMIN}
                 >
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
@@ -319,13 +323,15 @@ const Users = () => {
               <div className="space-y-2">
                 <Label>Assigned Branch</Label>
                 <Select 
-                  value={editForm.branchId} 
+                  value={editForm.role === UserRole.OVERALL_MANAGER ? 'none' : editForm.branchId} 
                   onValueChange={v => setEditForm({...editForm, branchId: v})}
-                  disabled={editUser?.role === UserRole.SUPER_ADMIN}
+                  disabled={editUser?.role === UserRole.SUPER_ADMIN || editForm.role === UserRole.OVERALL_MANAGER}
                 >
                   <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">-- Unassigned --</SelectItem>
+                    <SelectItem value="none">
+                      {editForm.role === UserRole.OVERALL_MANAGER ? '-- Unassigned (Multi-Branch Manager) --' : '-- Unassigned --'}
+                    </SelectItem>
                     {branches.filter((b: any) => b.code !== 'HQ').map((b: any) => (
                       <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
                     ))}
@@ -384,7 +390,14 @@ const Users = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Role *</Label>
-                <Select value={newUser.role} onValueChange={v => setNewUser({...newUser, role: v})}>
+                <Select 
+                  value={newUser.role} 
+                  onValueChange={v => setNewUser({
+                    ...newUser,
+                    role: v,
+                    branchId: v === UserRole.OVERALL_MANAGER ? '' : newUser.branchId
+                  })}
+                >
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={UserRole.OVERALL_MANAGER}>Overall Manager</SelectItem>
@@ -395,12 +408,15 @@ const Users = () => {
               <div className="space-y-2">
                 <Label>Assigned Branch</Label>
                 <Select 
-                  value={newUser.branchId || 'none'} 
+                  value={newUser.role === UserRole.OVERALL_MANAGER ? 'none' : (newUser.branchId || 'none')} 
                   onValueChange={v => setNewUser({...newUser, branchId: v === 'none' ? '' : v})}
+                  disabled={newUser.role === UserRole.OVERALL_MANAGER}
                 >
                   <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">-- Unassigned --</SelectItem>
+                    <SelectItem value="none">
+                      {newUser.role === UserRole.OVERALL_MANAGER ? '-- Unassigned (Multi-Branch Manager) --' : '-- Unassigned --'}
+                    </SelectItem>
                     {branches.filter((b: any) => b.code !== 'HQ').map((b: any) => (
                       <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
                     ))}

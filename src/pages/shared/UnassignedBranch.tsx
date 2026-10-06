@@ -21,7 +21,7 @@ export default function UnassignedBranch() {
       const response = await authApi.getProfile()
       const updatedUser = response.data
 
-      if (updatedUser && (updatedUser.branchId || updatedUser.role === 'SUPER_ADMIN')) {
+      if (updatedUser && (updatedUser.branchId || updatedUser.role === 'SUPER_ADMIN' || updatedUser.role === 'OVERALL_MANAGER')) {
         setAuth(updatedUser, token)
         toast.success('Branch Assigned!', {
           description: `You have been assigned to ${updatedUser.branch?.name || 'your branch'}. Redirecting...`,

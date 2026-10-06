@@ -54,8 +54,8 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode;
     return <Navigate to="/login" replace />
   }
 
-  // If user is not super admin and has no assigned branch, block access to protected branch routes
-  if (user && user.role !== UserRole.SUPER_ADMIN && !user.branchId) {
+  // If user is not super admin or overall manager and has no assigned branch, block access to protected branch routes
+  if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.OVERALL_MANAGER && !user.branchId) {
     return <Navigate to="/unassigned" replace />
   }
 
@@ -74,7 +74,7 @@ const RoleRedirect = () => {
   const { isAuthenticated, user } = useAuthStore()
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (user?.role !== UserRole.SUPER_ADMIN && !user?.branchId) {
+  if (user?.role !== UserRole.SUPER_ADMIN && user?.role !== UserRole.OVERALL_MANAGER && !user?.branchId) {
     return <Navigate to="/unassigned" replace />
   }
   if (user?.role === UserRole.SUPER_ADMIN) return <Navigate to="/admin/dashboard" replace />
@@ -87,7 +87,7 @@ const RoleRedirect = () => {
 const UnassignedRoute = () => {
   const { isAuthenticated, user } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (user?.role === UserRole.SUPER_ADMIN || user?.branchId) {
+  if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.OVERALL_MANAGER || user?.branchId) {
     return <Navigate to="/" replace />
   }
   return <UnassignedBranch />
