@@ -12,13 +12,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UserRole, UserStatus } from '@/types'
 import { Plus, Trash2, UserCheck, AlertTriangle, Edit } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatCurrency } from '@/lib/utils'
 
 const Users = () => {
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [showDelete, setShowDelete] = useState<string | null>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
-  const [newUser, setNewUser] = useState({ email: '', password: '', firstName: '', lastName: '', role: UserRole.BRANCH_MANAGER as string, branchId: '' })
+  const [newUser, setNewUser] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    role: UserRole.BRANCH_MANAGER as string,
+    branchId: '',
+    dailyPettyCash: 0,
+  })
 
   const [editUser, setEditUser] = useState<any>(null)
   const [editForm, setEditForm] = useState({
@@ -28,6 +37,7 @@ const Users = () => {
     role: UserRole.BRANCH_MANAGER as string,
     branchId: 'none',
     newPassword: '',
+    dailyPettyCash: 0,
   })
 
   const { data: users, isLoading } = useQuery({
@@ -52,7 +62,7 @@ const Users = () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['branches'] })
       setShowCreate(false)
-      setNewUser({ email: '', password: '', firstName: '', lastName: '', role: UserRole.BRANCH_MANAGER, branchId: '' })
+      setNewUser({ email: '', password: '', firstName: '', lastName: '', role: UserRole.BRANCH_MANAGER, branchId: '', dailyPettyCash: 0 })
       toast.success('User created successfully')
     },
     onError: (error: any) => {
@@ -102,7 +112,10 @@ const Users = () => {
       toast.error('Please fill in all required fields')
       return
     }
-    const payload: any = { ...newUser }
+    const payload: any = {
+      ...newUser,
+      dailyPettyCash: Number(newUser.dailyPettyCash) || 0,
+    }
     if (!payload.branchId || payload.branchId === 'none') {
       delete payload.branchId
     }
@@ -121,6 +134,7 @@ const Users = () => {
       email: editForm.email,
       role: editForm.role,
       branchId: editForm.branchId === 'none' ? null : editForm.branchId,
+      dailyPettyCash: Number(editForm.dailyPettyCash) || 0,
     }
     if (editForm.newPassword) {
       updateData.password = editForm.newPassword
@@ -139,6 +153,7 @@ const Users = () => {
       role: user.role || UserRole.BRANCH_MANAGER,
       branchId: currentBranchId,
       newPassword: '',
+      dailyPettyCash: Number(user.dailyPettyCash) || 0,
     })
   }
 
@@ -188,6 +203,7 @@ const Users = () => {
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Branch</TableHead>
+                  <TableHead>Petty Cash</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -212,6 +228,15 @@ const Users = () => {
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {Number(user.dailyPettyCash) > 0 ? (
+                        <Badge variant="outline" className="font-mono text-xs border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/20">
+                          {formatCurrency(Number(user.dailyPettyCash))}/day
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -341,6 +366,21 @@ const Users = () => {
             </div>
 
             <div className="space-y-2">
+              <Label>Daily Petty Cash Allowance (KES)</Label>
+              <Input 
+                type="number" 
+                min="0" 
+                step="50"
+                placeholder="0" 
+                value={editForm.dailyPettyCash || ''} 
+                onChange={e => setEditForm({...editForm, dailyPettyCash: Number(e.target.value) || 0})} 
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Constant daily operational cash. Auto-deducted in cash drawer reconciliation when sales are made (skipped if zero sales).
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label>Force Password Reset</Label>
               <Input 
                 type="text" 
@@ -424,6 +464,22 @@ const Users = () => {
                 </Select>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label>Daily Petty Cash Allowance (KES)</Label>
+              <Input 
+                type="number" 
+                min="0" 
+                step="50"
+                placeholder="0" 
+                value={newUser.dailyPettyCash || ''} 
+                onChange={e => setNewUser({...newUser, dailyPettyCash: Number(e.target.value) || 0})} 
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Constant daily operational cash. Auto-deducted in cash drawer reconciliation when sales are made (skipped if zero sales).
+              </p>
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
               <Button type="submit" disabled={createMutation.isPending}>Create User</Button>

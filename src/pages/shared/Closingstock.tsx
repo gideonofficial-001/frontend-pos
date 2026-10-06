@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Clock, Printer, Store,
-  Banknote, PackageCheck, AlertCircle, FileText, Check, AlertTriangle, ShieldCheck
+  Banknote, PackageCheck, AlertCircle, FileText, Check, AlertTriangle, ShieldCheck, Info
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -235,6 +235,10 @@ export default function ClosingStock() {
     cashSales: 0,
     mpesaSales: 0,
     invoiceSales: 0,
+    regularExpenses: 0,
+    pettyCash: 0,
+    pettyCashConfigured: 0,
+    pettyCashSkipped: false,
     totalExpenses: 0,
     totalRefunds: 0,
     expectedCash: 0,
@@ -356,7 +360,7 @@ export default function ClosingStock() {
               ) : (
                 <>
                   {/* Key Financial Metric Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
                     <div className="p-3 rounded-lg border bg-muted/20">
                       <p className="text-xs text-muted-foreground font-semibold uppercase">Opening Cash</p>
                       <p className="text-base sm:text-lg font-bold mt-1">{formatCurrency(activeOpeningCash)}</p>
@@ -367,9 +371,20 @@ export default function ClosingStock() {
                       <p className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-300 mt-1">+{formatCurrency(calc.cashSales)}</p>
                       <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">Sales & invoices</p>
                     </div>
+                    <div className="p-3 rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-blue-800 dark:text-blue-300 font-semibold uppercase">Petty Cash</p>
+                      <p className="text-base sm:text-lg font-bold text-blue-700 dark:text-blue-300 mt-1">
+                        {calc.pettyCash > 0 ? `-${formatCurrency(calc.pettyCash)}` : formatCurrency(0)}
+                      </p>
+                      <p className="text-[11px] text-blue-700/80 dark:text-blue-400 mt-0.5">
+                        {calc.pettyCashSkipped ? 'Skipped (no sales)' : calc.pettyCash > 0 ? 'Daily allowance' : 'No allowance'}
+                      </p>
+                    </div>
                     <div className="p-3 rounded-lg border bg-amber-50/50 dark:bg-emerald-950/20 border-amber-200 dark:border-emerald-800">
-                      <p className="text-xs text-amber-800 dark:text-emerald-300 font-semibold uppercase">Expenses Paid</p>
-                      <p className="text-base sm:text-lg font-bold text-amber-700 dark:text-emerald-300 mt-1">-{formatCurrency(calc.totalExpenses)}</p>
+                      <p className="text-xs text-amber-800 dark:text-emerald-300 font-semibold uppercase">Other Expenses</p>
+                      <p className="text-base sm:text-lg font-bold text-amber-700 dark:text-emerald-300 mt-1">
+                        -{formatCurrency(calc.regularExpenses ?? Math.max(0, calc.totalExpenses - (calc.pettyCash || 0)))}
+                      </p>
                       <p className="text-[11px] text-amber-700/80 dark:text-emerald-400 mt-0.5">Approved payouts</p>
                     </div>
                     <div className="p-3 rounded-lg border bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
@@ -380,9 +395,17 @@ export default function ClosingStock() {
                     <div className="col-span-2 sm:col-span-1 lg:col-span-1 p-3 rounded-lg border bg-slate-900 text-white">
                       <p className="text-xs text-slate-300 font-semibold uppercase">Expected in Drawer</p>
                       <p className="text-lg font-black text-white mt-1">{formatCurrency(activeExpectedCash)}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Float + Inflows - Outflows</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Float + In - Out</p>
                     </div>
                   </div>
+
+                  {/* Petty Cash notice if skipped */}
+                  {calc.pettyCashSkipped && (
+                    <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                      <Info className="w-4 h-4 shrink-0" />
+                      <span><strong>Daily Petty Cash Skipped:</strong> Because zero sales were made today, the daily constant petty cash allowance ({formatCurrency(calc.pettyCashConfigured)}) was skipped and not deducted from the drawer.</span>
+                    </div>
+                  )}
 
                   {/* Non-cash Reference Badges */}
                   <div className="flex flex-wrap gap-3 p-3 bg-muted/30 rounded-lg text-xs">

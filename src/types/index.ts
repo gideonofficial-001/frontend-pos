@@ -51,6 +51,7 @@ export enum ExpenseCategory {
   REPAIRS = 'REPAIRS',
   MISCELLANEOUS = 'MISCELLANEOUS',
   OTHER = 'OTHER',
+  PETTY_CASH = 'PETTY_CASH',
 }
 
 export enum ExpenseStatus {
@@ -126,6 +127,7 @@ export interface User {
   status: UserStatus
   branchId?: string
   branch?: Branch
+  dailyPettyCash?: number
   lastLoginAt?: string
   createdAt: string
 }

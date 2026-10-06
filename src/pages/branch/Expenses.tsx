@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
-import { Receipt, Plus } from 'lucide-react'
+import { Receipt, Plus, Coins } from 'lucide-react'
 
 const expenseCategories = [
   { value: 'FUEL', label: 'Fuel' },
@@ -51,7 +51,7 @@ const Expenses = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'APPROVED': return <Badge variant="success">Approved</Badge>
-      case 'PENDING': return <Badge variant="warning">Pending</Badge>
+      case 'PENDING': return <Badge variant="warning">Pending Approval</Badge>
       case 'REJECTED': return <Badge variant="destructive">Rejected</Badge>
       default: return <Badge>{status}</Badge>
     }
@@ -62,7 +62,7 @@ const Expenses = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Expenses</h1>
-          <p className="text-muted-foreground">Submit and track expenses</p>
+          <p className="text-muted-foreground">Submit and track branch expenses</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -70,11 +70,41 @@ const Expenses = () => {
         </Button>
       </div>
 
+      {/* Daily Petty Cash summary card */}
+      <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                <Coins className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm sm:text-base text-blue-950 dark:text-blue-100">Daily Constant Petty Cash</h3>
+                  <Badge variant="outline" className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 text-[10px]">
+                    Auto-Approved
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xl">
+                  Fixed daily operational allowance set by the Super Admin. Automatically deducted in cash drawer reconciliation on days with sales (skipped if zero sales). All other expenses require approval.
+                </p>
+              </div>
+            </div>
+            <div className="text-left sm:text-right shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Your Daily Allowance</p>
+              <p className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-300">
+                {user?.dailyPettyCash ? formatCurrency(Number(user.dailyPettyCash)) : 'KES 0.00'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-3">
         {expenses?.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Receipt className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p>No expenses yet</p>
+            <p>No expenses recorded yet</p>
           </div>
         ) : (
           expenses?.map((expense: any) => (
@@ -84,9 +114,19 @@ const Expenses = () => {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-bold">{expense.expenseCode}</h3>
-                      {getStatusBadge(expense.status)}
+                      {expense.category === 'PETTY_CASH' ? (
+                        <Badge variant="success">Auto-Approved</Badge>
+                      ) : (
+                        getStatusBadge(expense.status)
+                      )}
                     </div>
-                    <Badge variant="outline" className="mb-2">{expense.category}</Badge>
+                    {expense.category === 'PETTY_CASH' ? (
+                      <Badge variant="outline" className="mb-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/20">
+                        Petty Cash (Daily Constant)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="mb-2">{expense.category}</Badge>
+                    )}
                     <p className="text-sm mt-1">{expense.description}</p>
                     <p className="text-xs text-muted-foreground mt-1">{formatDate(expense.createdAt)}</p>
                   </div>
@@ -101,7 +141,12 @@ const Expenses = () => {
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Submit Expense</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Submit Expense</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Submit operational expenses for Admin approval. Once approved, expenses are deducted from drawer reconciliation.
+            </p>
+          </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate({...newExpense, amount: Number(newExpense.amount), branchId: user?.branchId}) }} className="space-y-4">
             <div className="space-y-2">
               <Label>Category *</Label>

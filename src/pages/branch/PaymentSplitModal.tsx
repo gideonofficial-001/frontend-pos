@@ -49,6 +49,7 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
   const [failureReason, setFailureReason] = useState<string>('Payment failed or was cancelled.')
   const [mpesaReceiptInput, setMpesaReceiptInput] = useState('')
   const [pollCount, setPollCount]         = useState(0)
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
 
   const mpesaAmt       = Number(mpesaAmount) || 0
   const cashAmt        = Math.max(0, total - mpesaAmt)
@@ -132,9 +133,28 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
     }
   }
 
+  const parseMpesaFailureMessage = (desc?: string | null) => {
+    if (!desc) return 'Payment failed or was cancelled by customer.'
+    const lower = desc.toLowerCase()
+    if (lower.includes('cancel') || lower.includes('1032')) {
+      return 'Customer cancelled the payment on their phone.'
+    }
+    if (lower.includes('insufficient') || lower.includes('balance') || lower.includes('rule 1')) {
+      return 'Customer has insufficient funds in their M-Pesa account.'
+    }
+    if (lower.includes('timeout') || lower.includes('1037') || lower.includes('reach')) {
+      return 'Payment request timed out. Customer did not enter PIN.'
+    }
+    if (lower.includes('pin') || lower.includes('2001')) {
+      return 'Wrong PIN or invalid authorization entered on phone.'
+    }
+    return desc
+  }
+
   // ── Poll status ───────────────────────────────────────────────────────────
-  const checkStatus = async () => {
+  const checkStatus = async (isManual = false) => {
     if (!checkoutRequestId) return false
+    if (isManual) setIsCheckingStatus(true)
     try {
       const res = await mpesaApi.getStatus(checkoutRequestId)
       const { status, receiptNumber, customerName: name, resultDesc, sale } = res.data
@@ -143,7 +163,7 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
         setMpesaRef(finalRef)
         setCustomerName(name || null)
         setMpesaStatus('confirmed')
-        toast.success(`M-Pesa confirmed! Receipt: ${finalRef}`)
+        toast.success(`M-Pesa payment received! Receipt: ${finalRef}`)
         if (sale && onStkComplete) {
           setTimeout(() => {
             onStkComplete(sale)
@@ -151,13 +171,22 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
         }
         return true
       } else if (status === 'FAILED') {
-        setFailureReason(resultDesc || 'Payment failed or was cancelled.')
+        const readableReason = parseMpesaFailureMessage(resultDesc)
+        setFailureReason(readableReason)
         setMpesaStatus('failed')
+        toast.error(readableReason)
         return true
+      } else if (isManual) {
+        toast.info('Payment still pending. Customer has not entered PIN yet.')
       }
       return false
-    } catch {
+    } catch (err: any) {
+      if (isManual) {
+        toast.error(err.response?.data?.message || 'Could not verify status. Please check your connection.')
+      }
       return false
+    } finally {
+      if (isManual) setIsCheckingStatus(false)
     }
   }
 
@@ -165,12 +194,12 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
     if (mpesaStatus !== 'pending' || !checkoutRequestId) return
     if (pollCount >= 35) {
       setMpesaStatus('failed')
-      setFailureReason('Payment timed out waiting for customer PIN. If payment was completed, click "Check Status Again" or enter the receipt code below.')
+      setFailureReason('Payment timed out waiting for customer PIN. If payment was completed, click "Check Again" or enter the receipt code below.')
       toast.error('Payment timed out.')
       return
     }
     const timer = setTimeout(async () => {
-      const finished = await checkStatus()
+      const finished = await checkStatus(false)
       if (!finished) {
         setPollCount(c => c + 1)
       }
@@ -392,45 +421,61 @@ export function PaymentSplitModal({ total, pendingSaleData, onConfirm, onStkComp
                   {mpesaStatus === 'pending' && (
                     <div className="p-3 bg-amber-50 dark:bg-emerald-950/20 rounded-lg border border-amber-200 dark:border-emerald-500/40">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <Loader2 className="w-5 h-5 animate-spin text-amber-600 dark:text-emerald-400 shrink-0" />
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-sm font-bold text-amber-800 dark:text-emerald-200">Waiting for payment…</p>
-                            <p className="text-xs text-amber-600 dark:text-emerald-400">Customer should enter their PIN on phone</p>
+                            <p className="text-xs text-amber-600 dark:text-emerald-400 truncate">Customer should enter PIN on phone</p>
                           </div>
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
+                          disabled={isCheckingStatus}
                           className="text-xs h-8 bg-card border-amber-300 dark:border-emerald-500/40 text-amber-900 dark:text-emerald-300 hover:bg-amber-100 dark:hover:bg-emerald-950/40 shrink-0"
-                          onClick={() => checkStatus()}
+                          onClick={() => checkStatus(true)}
                         >
-                          <RefreshCw className="w-3 h-3 mr-1" /> Check Now
+                          <RefreshCw className={`w-3 h-3 mr-1 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+                          {isCheckingStatus ? 'Checking…' : 'Check Now'}
                         </Button>
                       </div>
                     </div>
                   )}
 
                   {mpesaStatus === 'failed' && (
-                    <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-500/40 space-y-2">
+                    <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-500/40 space-y-2.5">
                       <div className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                        <p className="text-xs text-red-700 dark:text-red-300">{failureReason}</p>
+                        <div>
+                          <p className="text-xs font-bold text-red-800 dark:text-red-300">Payment Not Completed</p>
+                          <p className="text-xs text-red-700 dark:text-red-300/90 mt-0.5">{failureReason}</p>
+                        </div>
                       </div>
-                      {checkoutRequestId && (
+                      <div className="flex gap-2 pt-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full text-xs h-8 bg-card border-red-300 dark:border-red-500/40 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/40"
+                          className="flex-1 text-xs h-8 bg-card border-red-300 dark:border-red-500/40 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/40"
                           onClick={() => {
-                            setMpesaStatus('pending')
-                            setPollCount(0)
-                            checkStatus()
+                            setMpesaStatus('idle')
+                            setCheckoutRequestId(null)
                           }}
                         >
-                          <RefreshCw className="w-3 h-3 mr-1" /> Check Status Again
+                          Retry STK Push
                         </Button>
-                      )}
+                        {checkoutRequestId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isCheckingStatus}
+                            className="flex-1 text-xs h-8 bg-card border-red-300 dark:border-red-500/40 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/40"
+                            onClick={() => checkStatus(true)}
+                          >
+                            <RefreshCw className={`w-3 h-3 mr-1 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+                            {isCheckingStatus ? 'Checking…' : 'Check Again'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
 
