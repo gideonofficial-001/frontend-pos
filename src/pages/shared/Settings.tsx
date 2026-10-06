@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/store'
 import { useThemeStore } from '@/store/theme'
+import { usePrinterStore } from '@/store/printer'
 import api from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets } from 'lucide-react'
+import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets, Printer, SlidersHorizontal } from 'lucide-react'
 
 const Settings = () => {
   const { user, token, setAuth, clearAuth } = useAuthStore()
   const { theme, setTheme } = useThemeStore()
+  const printer = usePrinterStore()
   
   // Profile State
   const [firstName, setFirstName] = useState(user?.firstName || '')
@@ -351,6 +354,48 @@ const Settings = () => {
               <p className="font-bold text-sm text-foreground">Oceanic Aqua</p>
               <p className="text-xs text-muted-foreground mt-0.5">Electric cyan & deep abyss shade</p>
             </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Thermal Receipt Printer Setup Card */}
+      <Card className="shadow-sm border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Printer className="w-5 h-5 text-primary" /> Thermal Receipt Printer Setup
+          </CardTitle>
+          <CardDescription>
+            Configure POS thermal printer specifications, 58mm compact vs 80mm standard paper width, printing scaling ratio, typography, and test receipt prints.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg border">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm">Active Printer Profile</p>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                  {printer.paperWidth} ({printer.printScale}%)
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {printer.printerName} &bull; Font: {printer.fontSize} &bull; Auto-print on checkout: {printer.autoPrintOnSale ? 'Enabled' : 'Disabled'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => printer.runTestPrint()}
+              >
+                <Printer className="w-3.5 h-3.5" /> Test Print
+              </Button>
+              <Link to="/printer-setup">
+                <Button size="sm" className="gap-1.5 text-xs bg-primary text-primary-foreground">
+                  <SlidersHorizontal className="w-3.5 h-3.5" /> Configure Printer
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -8,7 +8,7 @@ import {
   ShoppingCart, FileText, RotateCcw, History, BarChart3,
   ClipboardList, Settings, LogOut, Bell, ArrowLeftRight,
   Receipt, ChevronLeft, ChevronRight, X, Menu, Smartphone,
-  Sun, Moon, Sparkles, Heart, Droplets, SlidersHorizontal
+  Sun, Moon, Sparkles, Heart, Droplets, SlidersHorizontal, Printer
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -53,6 +53,7 @@ const Sidebar = () => {
         { path: '/admin/reports',   icon: BarChart3,     label: 'Reports' },
         { path: '/notifications',   icon: Bell,          label: 'Notifications' },
         { path: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
+        { path: '/printer-setup',   icon: Printer,       label: 'Printer Setup' },
         { path: '/settings', icon: Settings, label: 'Settings' },
       )
     }
@@ -69,6 +70,7 @@ const Sidebar = () => {
         { path: '/admin/returns', icon: RotateCcw, label: 'Returns' },
         { path: '/manager/reports', icon: BarChart3, label: 'Reports' },
         { path: '/notifications', icon: Bell, label: 'Notifications' },
+        { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },
         { path: '/settings', icon: Settings, label: 'Settings' },
       )
     }
@@ -85,6 +87,7 @@ const Sidebar = () => {
         { path: '/branch/expenses', icon: Receipt, label: 'Expenses' },
         { path: '/branch/transfers', icon: ArrowLeftRight, label: 'Transfers' },
         { path: '/notifications', icon: Bell, label: 'Notifications' },
+        { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },
         { path: '/settings', icon: Settings, label: 'Settings' },
       )
     }

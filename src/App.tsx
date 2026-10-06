@@ -44,6 +44,7 @@ import Settings from '@/pages/shared/Settings'
 import NotFound from '@/pages/NotFound'
 import Closingstock from '@/pages/shared/Closingstock'
 import UnassignedBranch from '@/pages/shared/UnassignedBranch'
+import PrinterSetup from '@/pages/shared/PrinterSetup'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) => {
@@ -172,6 +173,7 @@ function App() {
 
           {/* Shared Routes */}
           <Route path="/closing-stock" element={<ProtectedRoute><Closingstock /></ProtectedRoute>} />
+          <Route path="/printer-setup" element={<ProtectedRoute><PrinterSetup /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         </Route>

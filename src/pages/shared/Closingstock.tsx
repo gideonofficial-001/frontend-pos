@@ -302,10 +302,10 @@ export default function ClosingStock() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-2 border-b pb-1">
+      <div className="flex gap-2 border-b pb-1 overflow-x-auto scrollbar-none">
         <Button
           variant={activeTab === 'reconciliation' ? 'default' : 'ghost'}
-          className="gap-2"
+          className="gap-2 shrink-0 text-xs sm:text-sm"
           onClick={() => setActiveTab('reconciliation')}
         >
           <Banknote className="w-4 h-4" />
@@ -313,7 +313,7 @@ export default function ClosingStock() {
         </Button>
         <Button
           variant={activeTab === 'snapshots' ? 'default' : 'ghost'}
-          className="gap-2"
+          className="gap-2 shrink-0 text-xs sm:text-sm"
           onClick={() => setActiveTab('snapshots')}
         >
           <PackageCheck className="w-4 h-4" />
@@ -329,7 +329,7 @@ export default function ClosingStock() {
 
           {/* Today's Reconciliation Card */}
           <Card className="border-primary/20 shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 gap-3">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Banknote className="w-5 h-5 text-emerald-600" />
@@ -340,11 +340,11 @@ export default function ClosingStock() {
                 </p>
               </div>
               {isClosedToday ? (
-                <Badge className="bg-emerald-600 text-white gap-1 px-3 py-1 text-xs">
+                <Badge className="bg-emerald-600 text-white gap-1 px-3 py-1 text-xs self-start sm:self-center shrink-0">
                   <ShieldCheck className="w-3.5 h-3.5" /> CLOSED FOR TODAY
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-amber-600 border-amber-300 dark:border-emerald-500/40 gap-1 px-3 py-1 text-xs">
+                <Badge variant="outline" className="text-amber-600 border-amber-300 dark:border-emerald-500/40 gap-1 px-3 py-1 text-xs self-start sm:self-center shrink-0">
                   <Clock className="w-3.5 h-3.5" /> OPEN / IN PROGRESS
                 </Badge>
               )}
@@ -356,28 +356,28 @@ export default function ClosingStock() {
               ) : (
                 <>
                   {/* Key Financial Metric Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
                     <div className="p-3 rounded-lg border bg-muted/20">
                       <p className="text-xs text-muted-foreground font-semibold uppercase">Opening Cash</p>
-                      <p className="text-lg font-bold mt-1">{formatCurrency(activeOpeningCash)}</p>
+                      <p className="text-base sm:text-lg font-bold mt-1">{formatCurrency(activeOpeningCash)}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">Start of day float</p>
                     </div>
                     <div className="p-3 rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
                       <p className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold uppercase">Cash Received</p>
-                      <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mt-1">+{formatCurrency(calc.cashSales)}</p>
-                      <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">From cash sales & invoices</p>
+                      <p className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-300 mt-1">+{formatCurrency(calc.cashSales)}</p>
+                      <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">Sales & invoices</p>
                     </div>
                     <div className="p-3 rounded-lg border bg-amber-50/50 dark:bg-emerald-950/20 border-amber-200 dark:border-emerald-800">
                       <p className="text-xs text-amber-800 dark:text-emerald-300 font-semibold uppercase">Expenses Paid</p>
-                      <p className="text-lg font-bold text-amber-700 dark:text-emerald-300 mt-1">-{formatCurrency(calc.totalExpenses)}</p>
-                      <p className="text-[11px] text-amber-700/80 dark:text-emerald-400 mt-0.5">Approved cash payouts</p>
+                      <p className="text-base sm:text-lg font-bold text-amber-700 dark:text-emerald-300 mt-1">-{formatCurrency(calc.totalExpenses)}</p>
+                      <p className="text-[11px] text-amber-700/80 dark:text-emerald-400 mt-0.5">Approved payouts</p>
                     </div>
                     <div className="p-3 rounded-lg border bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                       <p className="text-xs text-red-800 dark:text-red-300 font-semibold uppercase">Refunds Given</p>
-                      <p className="text-lg font-bold text-red-700 dark:text-red-300 mt-1">-{formatCurrency(calc.totalRefunds)}</p>
-                      <p className="text-[11px] text-red-700/80 dark:text-red-400 mt-0.5">Approved cash returns</p>
+                      <p className="text-base sm:text-lg font-bold text-red-700 dark:text-red-300 mt-1">-{formatCurrency(calc.totalRefunds)}</p>
+                      <p className="text-[11px] text-red-700/80 dark:text-red-400 mt-0.5">Approved returns</p>
                     </div>
-                    <div className="p-3 rounded-lg border bg-slate-900 text-white">
+                    <div className="col-span-2 sm:col-span-1 lg:col-span-1 p-3 rounded-lg border bg-slate-900 text-white">
                       <p className="text-xs text-slate-300 font-semibold uppercase">Expected in Drawer</p>
                       <p className="text-lg font-black text-white mt-1">{formatCurrency(activeExpectedCash)}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Float + Inflows - Outflows</p>
@@ -479,18 +479,18 @@ export default function ClosingStock() {
 
                       {/* Live Variance Calculation Display */}
                       {activeClosingCash !== null && (
-                        <div className={`p-4 rounded-lg border flex items-center justify-between gap-3 ${
+                        <div className={`p-3.5 sm:p-4 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           activeVariance === 0
                             ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-600 text-emerald-800 dark:text-emerald-200'
                             : activeVariance < 0
                             ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
                             : 'bg-amber-50 dark:bg-emerald-950/30 border-amber-300 dark:border-emerald-600 text-amber-800 dark:text-emerald-200'
                         }`}>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5">
                             {activeVariance === 0 ? (
-                              <Check className="w-5 h-5 text-emerald-600" />
+                              <Check className="w-5 h-5 text-emerald-600 shrink-0" />
                             ) : (
-                              <AlertTriangle className="w-5 h-5" />
+                              <AlertTriangle className="w-5 h-5 shrink-0" />
                             )}
                             <div>
                               <p className="font-bold text-sm">
@@ -500,12 +500,12 @@ export default function ClosingStock() {
                                   ? `Cash Shortfall: ${formatCurrency(Math.abs(activeVariance))}`
                                   : `Cash Overage: +${formatCurrency(activeVariance)}`}
                               </p>
-                              <p className="text-xs opacity-80">
+                              <p className="text-xs opacity-80 mt-0.5">
                                 Expected: {formatCurrency(activeExpectedCash)} &bull; Counted: {formatCurrency(activeClosingCash)}
                               </p>
                             </div>
                           </div>
-                          <Badge variant="outline" className="font-mono text-sm font-black px-3 py-1">
+                          <Badge variant="outline" className="font-mono text-sm font-black px-3 py-1 self-start sm:self-center shrink-0">
                             Variance: {formatCurrency(activeVariance)}
                           </Badge>
                         </div>
@@ -640,7 +640,7 @@ export default function ClosingStock() {
         <div className="space-y-6">
 
           {/* Navigation Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-card border rounded-xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-card border rounded-xl shadow-sm">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={goBack} className="gap-1">
                 <ArrowLeft className="w-4 h-4" /> Earlier
@@ -659,7 +659,7 @@ export default function ClosingStock() {
                 max={toISODate(today)}
                 value={jumpDate}
                 onChange={(e) => setJumpDate(e.target.value)}
-                className="w-40 h-8 text-xs"
+                className="w-36 sm:w-40 h-8 text-xs"
               />
               <Button variant="secondary" size="sm" onClick={handleJump} disabled={!jumpDate}>
                 Go to Date
@@ -668,7 +668,7 @@ export default function ClosingStock() {
           </div>
 
           {/* 7-day strip */}
-          <div className="grid grid-cols-7 gap-2">
+          <div className="flex sm:grid sm:grid-cols-7 gap-2 overflow-x-auto pb-2 scrollbar-thin">
             {week.map((day) => {
               const iso = toISODate(day)
               const snap = snapshotMap.get(iso)
@@ -678,12 +678,12 @@ export default function ClosingStock() {
               return (
                 <Card
                   key={iso}
-                  className={`cursor-pointer transition-all border text-center ${
+                  className={`cursor-pointer transition-all border text-center min-w-[76px] flex-shrink-0 sm:min-w-0 flex-1 ${
                     isSelected ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50 bg-card'
                   }`}
                   onClick={() => setSelectedDate(snap ? iso : null)}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-2.5 sm:p-3">
                     <p className="text-[11px] text-muted-foreground font-semibold uppercase">{fmtShort(day)}</p>
                     <p className="text-base font-bold my-1">{day.getDate()}</p>
                     {snap ? (
@@ -706,7 +706,7 @@ export default function ClosingStock() {
           {/* Selected Date Detail View */}
           {selectedDate && snapshot && (
             <Card className="border-primary/20 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 gap-3">
                 <div>
                   <CardTitle className="text-lg">
                     Midnight Snapshot — {fmt(new Date(snapshot.date))}
@@ -715,7 +715,7 @@ export default function ClosingStock() {
                     Captured automatically at {new Date(snapshot.recordedAt).toLocaleTimeString()} &bull; {snapshot.totalProducts} total products tracked
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 self-start sm:self-center shrink-0">
                   <Printer className="w-4 h-4" /> Print Report
                 </Button>
               </CardHeader>

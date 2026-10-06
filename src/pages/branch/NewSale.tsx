@@ -274,14 +274,7 @@ const NewSale = () => {
     if (items.length === 0) return toast.error('Cart is empty')
     if (requiresCustomer && !selectedCustomerId) return toast.error('Please select a customer for this sale')
 
-    // Verify all tracked cylinder items have an assigned cylinder
-    for (const item of items) {
-      if (item.product.isCylinderTracked && !item.cylinderId) {
-        toast.error(`Please select a cylinder for ${item.product.name}`)
-        openCylinderPickerForItem(item)
-        return
-      }
-    }
+    // Tracked cylinder assignment is optional (no scanner required)
 
     // Verify discount limits for branch manager
     const requiresOverride = user?.role === 'BRANCH_MANAGER' && (totalDiscount > 500 || totalDiscount > (subtotal * 0.10 + 0.01))
@@ -397,8 +390,8 @@ const NewSale = () => {
                         <div>
                           <h4 className="font-semibold text-sm line-clamp-2 leading-snug">{product.name}</h4>
                           {product.isCylinderTracked && (
-                            <span className="text-[10px] text-amber-600 dark:text-emerald-400 font-bold block mt-0.5">
-                              • Serialized Cylinders
+                            <span className="text-[10px] text-muted-foreground font-medium block mt-0.5">
+                              • Serialized (Optional)
                             </span>
                           )}
                           <p className="text-lg font-black text-primary mt-1">{formatCurrency(displayPrice)}</p>
@@ -511,27 +504,27 @@ const NewSale = () => {
                       </Button>
                     </div>
 
-                    {/* Serialized Cylinder Selection Row */}
+                    {/* Serialized Cylinder Selection Row (Optional until barcode scanners installed) */}
                     {item.product.isCylinderTracked && (
                       <div className="px-2.5 py-1.5 bg-muted/40 border-t flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-emerald-400 shrink-0" />
-                          <span className="font-semibold text-muted-foreground shrink-0">Cylinder:</span>
+                          <Flame className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="font-semibold text-muted-foreground shrink-0">Cylinder (opt):</span>
                           {item.cylinderSerial ? (
                             <span className="font-mono font-bold text-foreground bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 px-1.5 py-0.5 rounded truncate">
                               {item.cylinderSerial}
                             </span>
                           ) : (
-                            <span className="text-amber-600 dark:text-amber-400 font-semibold italic">Not assigned</span>
+                            <span className="text-muted-foreground italic">None (Unassigned)</span>
                           )}
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 text-[11px] px-2 py-0 border-amber-300 dark:border-emerald-500/40 hover:bg-amber-50 dark:hover:bg-emerald-950/40 shrink-0"
+                          className="h-6 text-[11px] px-2 py-0 border-muted-foreground/30 hover:bg-muted shrink-0"
                           onClick={() => openCylinderPickerForItem(item)}
                         >
-                          {item.cylinderSerial ? 'Change' : 'Select'}
+                          {item.cylinderSerial ? 'Change' : 'Assign'}
                         </Button>
                       </div>
                     )}
@@ -638,12 +631,12 @@ const NewSale = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-amber-600 dark:text-emerald-400" />
-              Assign Cylinder: {cylinderPickerItem?.product?.name}
+              Assign Cylinder (Optional): {cylinderPickerItem?.product?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-xs text-muted-foreground">
-              Select the specific tracked cylinder unit to be issued with this sale:
+              If scanning a barcode or serial number, select the matching unit below. Otherwise, you can skip this step and complete the sale normally.
             </p>
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -658,7 +651,10 @@ const NewSale = () => {
               {loadingCylinders ? (
                 <p className="text-sm text-center py-6 text-muted-foreground">Loading available cylinders...</p>
               ) : availableCylinders.length === 0 ? (
-                <p className="text-sm text-center py-6 text-muted-foreground">No available cylinders found for this branch.</p>
+                <div className="text-center py-6 space-y-2">
+                  <p className="text-sm text-muted-foreground">No serialized units registered for this branch.</p>
+                  <p className="text-xs text-muted-foreground/75">You can still sell this item normally without a serial number.</p>
+                </div>
               ) : (
                 availableCylinders
                   .filter((c: any) =>
@@ -692,8 +688,8 @@ const NewSale = () => {
                   })
               )}
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              {cylinderPickerItem?.cylinderId && (
+            <div className="flex justify-between items-center gap-2 pt-2">
+              {cylinderPickerItem?.cylinderId ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -703,12 +699,14 @@ const NewSale = () => {
                     toast.info('Cylinder assignment removed')
                   }}
                 >
-                  Clear Selection
+                  Clear Assignment
                 </Button>
-              )}
-              <Button variant="secondary" size="sm" onClick={() => setCylinderPickerItem(null)}>
-                Cancel
-              </Button>
+              ) : <div />}
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setCylinderPickerItem(null)}>
+                  Skip / Sell Without Serial
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
