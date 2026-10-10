@@ -68,7 +68,6 @@ const Sidebar = () => {
         { path: '/customers', icon: UsersRound, label: 'Customers' },
         { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
         { path: '/admin/sales-history', icon: History, label: 'Sales History' },
-        { path: '/admin/returns', icon: RotateCcw, label: 'Returns' },
         { path: '/manager/reports', icon: BarChart3, label: 'Reports' },
         { path: '/notifications', icon: Bell, label: 'Notifications' },
         { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },
@@ -145,6 +144,8 @@ const Sidebar = () => {
               ? 'Neon Pink'
               : theme === 'aqua'
               ? 'Oceanic Aqua'
+              : theme === 'cyan'
+              ? 'Bright Cyan'
               : theme === 'dark'
               ? 'Dark Mode'
               : 'Light Mode'
@@ -156,6 +157,8 @@ const Sidebar = () => {
             <Heart className="w-5 h-5 shrink-0 text-pink-400" />
           ) : theme === 'aqua' ? (
             <Droplets className="w-5 h-5 shrink-0 text-cyan-400" />
+          ) : theme === 'cyan' ? (
+            <Droplets className="w-5 h-5 shrink-0 text-cyan-500" />
           ) : theme === 'dark' ? (
             <Moon className="w-5 h-5 shrink-0 text-indigo-400" />
           ) : (
@@ -169,6 +172,8 @@ const Sidebar = () => {
                 ? 'Neon Pink'
                 : theme === 'aqua'
                 ? 'Oceanic Aqua'
+                : theme === 'cyan'
+                ? 'Bright Cyan'
                 : theme === 'dark'
                 ? 'Dark Mode'
                 : 'Light Mode'}
