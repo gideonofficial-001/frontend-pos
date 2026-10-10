@@ -1,214 +1,190 @@
-import { NavLink, useLocation } from 'react-router-dom'
-import { useAuthStore, useSidebarStore } from '@/store'
+import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuthStore } from '@/store'
 import { useThemeStore } from '@/store/theme'
 import { UserRole } from '@/types'
-import { Logo } from '@/components/Logo'
-import {
-  LayoutDashboard, Users, Building2, PackageSearch, PackageCheck, UsersRound,
-  ShoppingCart, FileText, RotateCcw, History, BarChart3,
-  ClipboardList, Settings, LogOut, Bell, ArrowLeftRight,
-  Receipt, ChevronLeft, ChevronRight, X, Menu, Smartphone,
-  Sun, Moon, Sparkles, Heart, Droplets, SlidersHorizontal, Printer
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
+import { SplashScreen } from '@/components/SplashScreen'
+import { NetworkStatus } from '@/components/NetworkStatus'
 
-const Sidebar = () => {
-  const { user, clearAuth } = useAuthStore()
-  const { collapsed, mobileOpen, toggleCollapsed, setMobileOpen } = useSidebarStore()
-  const { theme, toggleTheme } = useThemeStore()
-  const location = useLocation()
+// Layouts
+import MainLayout from '@/components/layout/MainLayout'
+import AuthLayout from '@/components/layout/AuthLayout'
 
-  const handleLogout = () => {
-    clearAuth()
-    toast.success('Logged out successfully')
-    window.location.href = '/login'
+// Auth Pages
+import Login from '@/pages/auth/Login'
+import DeviceAuth from '@/pages/auth/DeviceAuth'
+
+// Admin Pages
+import AdminDashboard from '@/pages/admin/Dashboard'
+import Users from '@/pages/admin/Users'
+import Branches from '@/pages/admin/Branches'
+import Inventory from '@/pages/admin/Inventory'
+import Customers from '@/pages/admin/Customers'
+import AuditLogs from '@/pages/admin/AuditLogs'
+import AdminDevices from '@/pages/admin/Devices'
+import AdminReturns from '@/pages/admin/returns'
+import StockAdjustments from '@/pages/admin/StockAdjustments'
+
+// Manager Pages
+import ManagerDashboard from '@/pages/manager/Dashboard'
+import Reports from '@/pages/manager/Reports'
+
+// Branch Manager Pages
+import BranchDashboard from '@/pages/branch/Dashboard'
+import NewSale from '@/pages/branch/NewSale'
+import Invoices from '@/pages/branch/Invoices'
+import ReturnsPage from '@/pages/branch/Returns'
+import SalesHistory from '@/pages/branch/SalesHistory'
+import Expenses from '@/pages/branch/Expenses'
+import TransfersPage from '@/pages/branch/TransfersPage'
+
+// Shared Pages
+import Notifications from '@/pages/shared/Notifications'
+import Settings from '@/pages/shared/Settings'
+import NotFound from '@/pages/NotFound'
+import Closingstock from '@/pages/shared/Closingstock'
+import UnassignedBranch from '@/pages/shared/UnassignedBranch'
+import PrinterSetup from '@/pages/shared/PrinterSetup'
+
+// Protected Route Component
+const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) => {
+  const { isAuthenticated, user } = useAuthStore()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
   }
 
-  const getNavItems = () => {
-    if (!user) return []
-    const items = []
-
-    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.OVERALL_MANAGER && !user.branchId) {
-      return [
-        { path: '/unassigned', icon: Building2, label: 'Branch Assignment' },
-        { path: '/settings', icon: Settings, label: 'Settings' },
-      ]
-    }
-
-    if (user.role === UserRole.SUPER_ADMIN) {
-      items.push(
-        { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/admin/users', icon: Users, label: 'Users' },
-        { path: '/admin/branches', icon: Building2, label: 'Branches' },
-        { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
-        { path: '/stock-adjustments', icon: SlidersHorizontal, label: 'Stock Adjustments' },
-        { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
-        { path: '/customers', icon: UsersRound, label: 'Customers' },
-        { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
-        { path: '/admin/sales-history', icon: History, label: 'Sales History' },
-        { path: '/admin/returns', icon: RotateCcw, label: 'Returns' },
-        { path: '/admin/expenses', icon: Receipt, label: 'Expenses' },
-        { path: '/admin/transfers', icon: ArrowLeftRight, label: 'Transfers' },
-        { path: '/admin/devices',   icon: Smartphone,    label: 'Devices' },
-        { path: '/admin/reports',   icon: BarChart3,     label: 'Reports' },
-        { path: '/notifications',   icon: Bell,          label: 'Notifications' },
-        { path: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
-        { path: '/printer-setup',   icon: Printer,       label: 'Printer Setup' },
-        { path: '/settings', icon: Settings, label: 'Settings' },
-      )
-    }
-
-    if (user.role === UserRole.OVERALL_MANAGER) {
-      items.push(
-        { path: '/manager/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
-        { path: '/stock-adjustments', icon: SlidersHorizontal, label: 'Stock Adjustments' },
-        { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
-        { path: '/customers', icon: UsersRound, label: 'Customers' },
-        { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
-        { path: '/admin/sales-history', icon: History, label: 'Sales History' },
-        { path: '/manager/reports', icon: BarChart3, label: 'Reports' },
-        { path: '/notifications', icon: Bell, label: 'Notifications' },
-        { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },
-        { path: '/settings', icon: Settings, label: 'Settings' },
-      )
-    }
-
-    if (user.role === UserRole.BRANCH_MANAGER) {
-      items.push(
-        { path: '/branch/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
-        { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
-        { path: '/branch/new-sale', icon: ShoppingCart, label: 'New Sale' },
-        { path: '/branch/invoices', icon: FileText, label: 'Invoices' },
-        { path: '/branch/sales-history', icon: History, label: 'Sales History' },
-        { path: '/branch/returns', icon: RotateCcw, label: 'Returns' },
-        { path: '/branch/expenses', icon: Receipt, label: 'Expenses' },
-        { path: '/branch/transfers', icon: ArrowLeftRight, label: 'Transfers' },
-        { path: '/notifications', icon: Bell, label: 'Notifications' },
-        { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },
-        { path: '/settings', icon: Settings, label: 'Settings' },
-      )
-    }
-
-    return items
+  // If user is not super admin or overall manager and has no assigned branch, block access to protected branch routes
+  if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.OVERALL_MANAGER && !user.branchId) {
+    return <Navigate to="/unassigned" replace />
   }
 
-  const navItems = getNavItems()
+  if (allowedRoles && user && !allowedRoles.includes(user.role as UserRole)) {
+    if (user.role === UserRole.SUPER_ADMIN) return <Navigate to="/admin/dashboard" replace />
+    if (user.role === UserRole.OVERALL_MANAGER) return <Navigate to="/manager/dashboard" replace />
+    if (user.role === UserRole.BRANCH_MANAGER) return <Navigate to="/branch/dashboard" replace />
+    return <Navigate to="/" replace />
+  }
 
-  const sidebarContent = (
-    <>
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center overflow-hidden">
-          <Logo size="sm" variant="color" showText={!collapsed} />
-        </div>
-        <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 hover:bg-muted rounded-lg shrink-0">
-          <X className="w-5 h-5" />
-        </button>
-        <button onClick={toggleCollapsed} className="hidden lg:flex p-1.5 hover:bg-muted rounded-lg transition-colors shrink-0">
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
+  return <>{children}</>
+}
 
-      <nav className="flex-1 overflow-y-auto p-3">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                    isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )
-                }
-              >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+// Role-based redirect
+const RoleRedirect = () => {
+  const { isAuthenticated, user } = useAuthStore()
 
-      <div className="p-3 border-t space-y-2">
-        <button 
-          onClick={toggleTheme} 
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors"
-          title={`Current theme: ${
-            theme === 'jungle'
-              ? 'Dark Jungle Green'
-              : theme === 'pink'
-              ? 'Neon Pink'
-              : theme === 'aqua'
-              ? 'Oceanic Aqua'
-              : theme === 'cyan'
-              ? 'Bright Cyan'
-              : theme === 'dark'
-              ? 'Dark Mode'
-              : 'Light Mode'
-          } (click to cycle)`}
-        >
-          {theme === 'jungle' ? (
-            <Sparkles className="w-5 h-5 shrink-0 text-emerald-400" />
-          ) : theme === 'pink' ? (
-            <Heart className="w-5 h-5 shrink-0 text-pink-400" />
-          ) : theme === 'aqua' ? (
-            <Droplets className="w-5 h-5 shrink-0 text-cyan-400" />
-          ) : theme === 'cyan' ? (
-            <Droplets className="w-5 h-5 shrink-0 text-cyan-500" />
-          ) : theme === 'dark' ? (
-            <Moon className="w-5 h-5 shrink-0 text-indigo-400" />
-          ) : (
-            <Sun className="w-5 h-5 shrink-0 text-amber-500" />
-          )}
-          {!collapsed && (
-            <span>
-              {theme === 'jungle'
-                ? 'Dark Jungle'
-                : theme === 'pink'
-                ? 'Neon Pink'
-                : theme === 'aqua'
-                ? 'Oceanic Aqua'
-                : theme === 'cyan'
-                ? 'Bright Cyan'
-                : theme === 'dark'
-                ? 'Dark Mode'
-                : 'Light Mode'}
-            </span>
-          )}
-        </button>
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role !== UserRole.SUPER_ADMIN && user?.role !== UserRole.OVERALL_MANAGER && !user?.branchId) {
+    return <Navigate to="/unassigned" replace />
+  }
+  if (user?.role === UserRole.SUPER_ADMIN) return <Navigate to="/admin/dashboard" replace />
+  if (user?.role === UserRole.OVERALL_MANAGER) return <Navigate to="/manager/dashboard" replace />
+  if (user?.role === UserRole.BRANCH_MANAGER) return <Navigate to="/branch/dashboard" replace />
+  return <Navigate to="/login" replace />
+}
 
-        <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 w-full transition-colors">
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>Logout</span>}
-        </button>
-      </div>
-    </>
-  )
+// Route specifically for unassigned users
+const UnassignedRoute = () => {
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.OVERALL_MANAGER || user?.branchId) {
+    return <Navigate to="/" replace />
+  }
+  return <UnassignedBranch />
+}
+
+function App() {
+  const [showSplash, setShowSplash] = useState(true)
+  const [isReady, setIsReady] = useState(false)
+  const { theme } = useThemeStore()
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        setIsReady(true)
+      } catch {
+        setIsReady(true)
+      }
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    const root = window.document.documentElement
+    root.classList.remove('dark', 'theme-jungle', 'theme-pink', 'theme-aqua', 'theme-cyan')
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else if (theme === 'jungle') {
+      root.classList.add('dark', 'theme-jungle')
+    } else if (theme === 'pink') {
+      root.classList.add('dark', 'theme-pink')
+    } else if (theme === 'aqua') {
+      root.classList.add('dark', 'theme-aqua')
+    } else if (theme === 'cyan') {
+      root.classList.add('theme-cyan')
+    }
+  }, [theme])
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => { if (isReady) setShowSplash(false) }} />
+  }
 
   return (
     <>
-      {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />}
-      <button onClick={() => setMobileOpen(true)} className="fixed top-4 left-4 z-30 lg:hidden p-2 bg-background border rounded-lg shadow-sm">
-        <Menu className="w-5 h-5" />
-      </button>
+      <NetworkStatus />
 
-      <aside
-        className={cn(
-          'fixed left-0 top-0 h-full bg-background border-r flex flex-col z-50 transition-all duration-300',
-          'lg:translate-x-0',
-          mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full',
-          collapsed ? 'lg:w-20' : 'lg:w-64',
-          'w-64'
-        )}
-      >
-        {sidebarContent}
-      </aside>
+      <Routes>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/device-auth" element={<DeviceAuth />} />
+        </Route>
+
+        <Route path="/" element={<RoleRedirect />} />
+        <Route path="/unassigned" element={<UnassignedRoute />} />
+
+        <Route element={<MainLayout />}>
+          {/* Super Admin Routes */}
+          <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><Users /></ProtectedRoute>} />
+          <Route path="/admin/branches" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><Branches /></ProtectedRoute>} />
+          <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AuditLogs /></ProtectedRoute>} />
+          <Route path="/admin/devices" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AdminDevices /></ProtectedRoute>} />
+          <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><Reports /></ProtectedRoute>} />
+          <Route path="/admin/expenses" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><Expenses /></ProtectedRoute>} />
+
+          {/* Admin & Manager Routes */}
+          <Route path="/inventory" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><Inventory /></ProtectedRoute>} />
+          <Route path="/stock-adjustments" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><StockAdjustments /></ProtectedRoute>} />
+          <Route path="/customers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Customers /></ProtectedRoute>} />
+          <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Invoices /></ProtectedRoute>} />
+          <Route path="/admin/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><SalesHistory /></ProtectedRoute>} />
+          <Route path="/admin/returns" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AdminReturns /></ProtectedRoute>} />
+
+          <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={[UserRole.OVERALL_MANAGER]}><ManagerDashboard /></ProtectedRoute>} />
+          <Route path="/manager/reports" element={<ProtectedRoute allowedRoles={[UserRole.OVERALL_MANAGER]}><Reports /></ProtectedRoute>} />
+
+          {/* Branch Manager Routes */}
+          <Route path="/branch/dashboard" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><BranchDashboard /></ProtectedRoute>} />
+          <Route path="/branch/new-sale" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><NewSale /></ProtectedRoute>} />
+          <Route path="/branch/invoices" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><Invoices /></ProtectedRoute>} />
+          <Route path="/branch/returns" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><ReturnsPage /></ProtectedRoute>} />
+          <Route path="/branch/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><SalesHistory /></ProtectedRoute>} />
+          <Route path="/branch/expenses" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]}><Expenses /></ProtectedRoute>} />
+          <Route path="/branch/transfers" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><TransfersPage /></ProtectedRoute>} />
+          <Route path="/admin/transfers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><TransfersPage /></ProtectedRoute>} />
+
+          {/* Shared Routes */}
+          <Route path="/closing-stock" element={<ProtectedRoute><Closingstock /></ProtectedRoute>} />
+          <Route path="/printer-setup" element={<ProtectedRoute><PrinterSetup /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </>
   )
 }
 
-export default Sidebar
+export default App
