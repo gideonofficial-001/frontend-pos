@@ -113,6 +113,28 @@
     --input: 192 30% 18%;
     --ring: 185 85% 48%;
   }
+
+  .theme-cyan {
+    --background: 186 65% 97%;
+    --foreground: 195 95% 8%;
+    --card: 186 35% 99%;
+    --card-foreground: 195 95% 8%;
+    --popover: 186 35% 99%;
+    --popover-foreground: 195 95% 8%;
+    --primary: 186 100% 42%;
+    --primary-foreground: 195 95% 5%;
+    --secondary: 186 35% 90%;
+    --secondary-foreground: 195 85% 10%;
+    --muted: 186 28% 92%;
+    --muted-foreground: 195 35% 28%;
+    --accent: 186 45% 88%;
+    --accent-foreground: 195 85% 10%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 186 45% 82%;
+    --input: 186 45% 82%;
+    --ring: 186 100% 42%;
+  }
 }
 
 @layer base {
@@ -154,6 +176,17 @@
   .theme-aqua .border-amber-400,
   .theme-aqua .border-orange-100 {
     border-color: rgba(17, 192, 218, 0.45) !important;
+  }
+
+  /* Subtle cyan outline in cyan theme */
+  .theme-cyan .border-yellow-200,
+  .theme-cyan .border-yellow-300,
+  .theme-cyan .border-yellow-400,
+  .theme-cyan .border-amber-200,
+  .theme-cyan .border-amber-300,
+  .theme-cyan .border-amber-400,
+  .theme-cyan .border-orange-100 {
+    border-color: rgba(6, 182, 212, 0.45) !important;
   }
 }
 
