@@ -1,773 +1,634 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { inventoryApi, salesApi, customersApi } from '@/api'
-import { useAuthStore, useCartStore } from '@/store'
-import { SaleType } from '@/types'
-import { Button } from '@/components/ui/button'
+import { useState, useMemo, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { salesApi, branchesApi } from '@/api'
+import { useAuthStore } from '@/store'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
-import { formatCurrency } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
+import { formatCurrency, getNairobiDateString } from '@/lib/utils'
+import { Calendar, Search, Printer, Store, FileDown, Phone, User, ChevronRight, Package, X } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  ShoppingCart, Minus, Plus, Trash2, Search, Package, Flame, Tag,
-  Bookmark, RotateCcw, ShieldAlert, KeyRound, Check
-} from 'lucide-react'
-import { PaymentSplitModal, PaymentEntry } from './PaymentSplitModal'
-import { ThermalReceiptModal } from './ThermalReceiptModal'
 
-const VARIANT_SEPARATOR = '~~'
+const getBusinessDate = (dateString?: string | Date) => {
+  return getNairobiDateString(dateString)
+}
 
-const NewSale = () => {
+const SalesHistory = () => {
   const { user } = useAuthStore()
-  const {
-    items, addItem, removeItem, updateQuantity, updateItemDiscount, updateItemCylinder, clearCart,
-    getSubtotal, getTotalDiscount, getTotal,
-    parkedCarts, parkCurrentCart, recallCart, removeParkedCart,
-  } = useCartStore()
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'OVERALL_MANAGER'
 
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [saleType, setSaleType] = useState<SaleType>(SaleType.CASH)
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
-  const [customerName, setCustomerName] = useState('')
+  const [view, setView] = useState('all')
+  const todayBusinessDate = getBusinessDate(new Date().toISOString())
+  const [dateFilter, setDateFilter] = useState(todayBusinessDate)
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('all')
+  const [showEndOfMonthPrompt, setShowEndOfMonthPrompt] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<any>(null)
 
-  // Tracks which cart item has its discount input open
-  const [discountOpenFor, setDiscountOpenFor] = useState<string | null>(null)
+  // ── Product filter state ─────────────────────────────────────────────────
+  const [selectedProductId, setSelectedProductId] = useState<string>('')
+  const [selectedProductName, setSelectedProductName] = useState<string>('')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all')
 
-  // Discount Override Modal State
-  const [overrideModalOpen, setOverrideModalOpen] = useState(false)
-  const [managerOverrideCode, setManagerOverrideCode] = useState('')
-  const [discountReason, setDiscountReason] = useState('')
-
-  const [lpgModalOpen, setLpgModalOpen] = useState(false)
-  const [selectedInvItem, setSelectedInvItem] = useState<any>(null)
-  const [splitModalOpen, setSplitModalOpen] = useState(false)
-  const [parkedModalOpen, setParkedModalOpen] = useState(false)
-  const [pendingSaleData, setPendingSaleData] = useState<any>(null)
-  const [completedReceipt, setCompletedReceipt] = useState<any>(null)
-  const [invoiceReceipt, setInvoiceReceipt] = useState<{
-    code: string; name: string; phone: string; total: number; itemsStr: string
-  } | null>(null)
-
-  const requiresCustomer = saleType === SaleType.INVOICE || saleType === SaleType.WHOLESALE
-  const branchId = user?.branchId || ''
-
-  const { data: inventory } = useQuery({
-    queryKey: ['inventory', branchId],
-    queryFn: async () => {
-      if (!branchId) return []
-      const response = await inventoryApi.getAll({ branchId })
-      return response.data
-    },
-    enabled: !!branchId,
-  })
-
-  const { data: hiddenCategories = [] } = useQuery<string[]>({
-    queryKey: ['hidden-categories', branchId],
-    queryFn: async () => {
-      if (!branchId) return []
-      try {
-        const res = await inventoryApi.getHiddenCategories(branchId)
-        return Array.isArray(res.data) ? res.data : []
-      } catch {
-        return []
+  const getPaymentMethodDisplay = (sale: any) => {
+    if (sale.payments && sale.payments.length > 0) {
+      const methods = Array.from(new Set(sale.payments.map((p: any) => p.method)))
+      if (methods.length === 1) {
+        return methods[0] === 'PAYBILL' ? 'PayBill' : methods[0] === 'CASH' ? 'Cash' : methods[0]
       }
-    },
-    enabled: !!branchId,
+      return 'Split (' + methods.map((m: any) => m === 'PAYBILL' ? 'PayBill' : m === 'CASH' ? 'Cash' : m).join(' + ') + ')'
+    }
+    if (sale.paymentMethod === 'CASH') return 'Cash'
+    if (sale.paymentMethod === 'PAYBILL') return 'PayBill'
+    if (sale.paymentMethod === 'MPESA') return 'PayBill'
+    return sale.paymentMethod || 'Cash'
+  }
+
+  const { data: branches } = useQuery({
+    queryKey: ['branches'],
+    queryFn: async () => { const r = await branchesApi.getAll(); return r.data },
+    enabled: isAdmin,
   })
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
+  const { data: sales, isLoading } = useQuery({
+    queryKey: ['sales', selectedBranchId, isAdmin],
     queryFn: async () => {
-      try {
-        const response = await customersApi.getAll()
-        const data = Array.isArray(response.data) ? response.data : (response.data?.data || [])
-        return data.filter((c: any) => c.isActive)
-      } catch { return [] }
+      const params: any = {}
+      if (!isAdmin) params.branchId = user?.branchId
+      else if (selectedBranchId !== 'all') params.branchId = selectedBranchId
+      const r = await salesApi.getAll(params)
+      return r.data
     },
   })
 
-  const createSaleMutation = useMutation({
-    mutationFn: (data: any) => salesApi.create(data),
-    onSuccess: (response, variables) => {
-      const itemsSnapshot = items.map(item => {
-        const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
-        const label = lpgVariant === 'REFILL' ? ' (Refill)' : lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
-        return {
-          name: `${item.product.name}${label}`,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          discount: item.discount,
-          total: item.total,
+  useEffect(() => {
+    if (!isAdmin) return
+    const today = new Date()
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    if (lastDay.getDate() - today.getDate() <= 1) {
+      const key = `${today.getFullYear()}-${today.getMonth()}`
+      if (!localStorage.getItem(`monthly_receipt_downloaded_${key}`)) setShowEndOfMonthPrompt(true)
+    }
+  }, [isAdmin])
+
+  // ── Unique products extracted from all loaded sales (no extra API call) ──
+  const availableProducts = useMemo(() => {
+    if (!sales) return []
+    const productMap = new Map<string, string>()
+    sales.forEach((sale: any) => {
+      sale.saleItems?.forEach((item: any) => {
+        const pName = item.productNameSnapshot || item.product?.name
+        if (pName && !productMap.has(item.productId)) {
+          productMap.set(item.productId, pName)
         }
       })
+    })
+    return Array.from(productMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [sales])
 
-      const paymentList = variables.payments && variables.payments.length > 0
-        ? variables.payments
-        : [{ method: variables.type === SaleType.INVOICE ? 'INVOICE' : 'CASH', amount: getTotal() }]
+  const clearProductFilter = () => {
+    setSelectedProductId('')
+    setSelectedProductName('')
+  }
 
-      const customerObj = customers.find((c: any) => c.id === variables.customerId)
+  const handleViewChange = (newView: string) => {
+    // Product filter doesn't apply to wholesale client view — clear it
+    if (newView === 'wholesale') clearProductFilter()
+    setView(newView)
+  }
 
-      // Set thermal receipt data for immediate receipt display & printing
-      setCompletedReceipt({
-        saleCode: response.data.saleCode,
-        date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        branchName: response.data?.branch?.name || user?.branchId || 'Branch',
-        cashierName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Cashier',
-        customerName: customerObj?.name || variables.customerName || undefined,
-        customerPhone: customerObj?.phone || undefined,
-        saleType: variables.type,
-        items: itemsSnapshot,
-        subtotal: getSubtotal(),
-        totalDiscount: getTotalDiscount(),
-        total: getTotal(),
-        payments: paymentList,
-      })
+  // ── ALL / RETAIL rows ────────────────────────────────────────────────────
+  const transactionRows = useMemo(() => {
+    if (!sales || view === 'wholesale') return []
+    const rows: any[] = []
 
-      if (variables.type === SaleType.INVOICE) {
-        const itemsListStr = items.map(item => {
-          const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
-          const label = lpgVariant === 'REFILL' ? ' (Refill)' : lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
-          return `${item.quantity}x ${item.product.name}${label}`
-        }).join('\n- ')
-        setInvoiceReceipt({
-          code: response.data.saleCode,
-          name: customerObj?.name || 'Customer',
-          phone: customerObj?.phone || '',
-          total: getTotal(),
-          itemsStr: itemsListStr,
+    sales.forEach((sale: any) => {
+      if (sale.type === 'INVOICE') return
+      if (view === 'retail' && sale.type !== 'CASH') return
+
+      if (paymentMethodFilter !== 'all') {
+        const hasMethod = sale.payments?.some((p: any) => p.method === paymentMethodFilter) ||
+          sale.paymentMethod === paymentMethodFilter ||
+          (paymentMethodFilter === 'PAYBILL' && sale.paymentMethod === 'MPESA')
+        if (!hasMethod) return
+      }
+
+      const businessDate = getBusinessDate(sale.createdAt)
+      const paymentDisplay = getPaymentMethodDisplay(sale)
+
+      if (selectedProductId) {
+        // ── Product filter mode: ignore date, only show matching product ──
+        const matchingItems = sale.saleItems?.filter((item: any) => item.productId === selectedProductId)
+        if (!matchingItems?.length) return
+
+        matchingItems.forEach((item: any) => {
+          const pName = item.productNameSnapshot || item.product?.name || 'Unknown Item'
+          const variant = item.variantSnapshot || item.lpgVariant
+          const lpgLabel = variant === 'REFILL' ? ' (Refill)' : variant === 'EMPTY_SHELL' ? ' (Empty Shell)' : variant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
+          const description = `${pName}${lpgLabel} x${item.quantity}pcs`
+          if (search) {
+            const term = search.toLowerCase()
+            if (!sale.saleCode.toLowerCase().includes(term) && !description.toLowerCase().includes(term) && !sale.customer?.name?.toLowerCase().includes(term)) return
+          }
+          rows.push({
+            id: item.id,
+            date: new Date(sale.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            businessDate,
+            description,
+            type: sale.type === 'CASH' ? 'RETAIL' : sale.type,
+            reference: sale.saleCode,
+            paymentMethod: paymentDisplay,
+            amount: item.total,
+            discount: Number(item.discount || 0),
+            customer: sale.customer?.name,
+            branchName: sale.branch?.name,
+          })
         })
       } else {
-        toast.success(`Sale completed! Code: ${response.data.saleCode}`)
+        // ── Normal mode: date filter applies ──
+        if (dateFilter && businessDate !== dateFilter) return
+
+        sale.saleItems?.forEach((item: any, index: number) => {
+          const pName = item.productNameSnapshot || item.product?.name || 'Unknown Item'
+          const variant = item.variantSnapshot || item.lpgVariant
+          const lpgLabel = variant === 'REFILL' ? ' (Refill)' : variant === 'EMPTY_SHELL' ? ' (Empty Shell)' : variant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
+          const description = `${pName}${lpgLabel} x${item.quantity}pcs`
+          const reference = sale.saleItems.length > 1 ? `${sale.saleCode}-${index + 1}` : sale.saleCode
+          if (search) {
+            const term = search.toLowerCase()
+            if (!reference.toLowerCase().includes(term) && !description.toLowerCase().includes(term) && !sale.customer?.name?.toLowerCase().includes(term)) return
+          }
+          rows.push({
+            id: item.id || `${sale.id}-${index}`,
+            date: new Date(sale.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            businessDate,
+            description,
+            type: sale.type === 'CASH' ? 'RETAIL' : sale.type,
+            reference,
+            paymentMethod: paymentDisplay,
+            amount: item.total,
+            discount: Number(item.discount || 0),
+            customer: sale.customer?.name,
+            branchName: sale.branch?.name,
+          })
+        })
       }
+    })
+    return rows
+  }, [sales, search, view, dateFilter, selectedProductId, paymentMethodFilter])
 
-      clearCart()
-      setSearch('')
-      setSelectedCustomerId('')
-      setCustomerName('')
-      setSaleType(SaleType.CASH)
-      setDiscountOpenFor(null)
-      setSplitModalOpen(false)
-      setPendingSaleData(null)
-      setManagerOverrideCode('')
-      setDiscountReason('')
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['inventory'] })
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
-      queryClient.invalidateQueries({ queryKey: ['invoices'] })
-    },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create sale'),
-  })
-
-  const filteredInventory = inventory?.filter((inv: any) => {
-    if (!inv.product?.isActive) return false
-    if (inv.product?.categoryId && hiddenCategories.includes(inv.product.categoryId)) return false
-    const isLpg = inv.product.type === 'LPG_REFILL' || inv.product.type === 'LPG_CYLINDER'
-    const availableStock = isLpg ? (inv.fullCylinders || 0) : inv.quantity
-    if (availableStock === 0) return false
-    if (saleType === SaleType.WHOLESALE) {
-      if (Number(inv.product.wholesalePrice || 0) === 0) return false
-    }
-    if (search.trim() === '') return true
-    return (
-      inv.product.name.toLowerCase().includes(search.toLowerCase()) ||
-      inv.product.code.toLowerCase().includes(search.toLowerCase())
-    )
-  }) || []
-
-  const handleTypeSwitch = (newType: SaleType) => {
-    if (items.length > 0 && newType !== saleType) {
-      if (window.confirm('Changing the sale type will clear your current cart. Do you want to proceed?')) {
-        clearCart(); setSaleType(newType); setDiscountOpenFor(null)
+  // ── WHOLESALE: grouped by client ─────────────────────────────────────────
+  const wholesaleClients = useMemo(() => {
+    if (!sales || view !== 'wholesale') return []
+    const clientMap = new Map<string, any>()
+    sales.forEach((sale: any) => {
+      if (sale.type !== 'WHOLESALE') return
+      const businessDate = getBusinessDate(sale.createdAt)
+      if (dateFilter && businessDate !== dateFilter) return
+      const clientKey = sale.customerId || `anon-${sale.id}`
+      if (!clientMap.has(clientKey)) {
+        clientMap.set(clientKey, {
+          clientKey,
+          customerId: sale.customerId,
+          customerName: sale.customer?.name || 'Walk-in Customer',
+          customerPhone: sale.customer?.phone || '',
+          branchName: sale.branch?.name || '',
+          sales: [],
+          itemCount: 0,
+          subtotal: 0,
+          totalDiscount: 0,
+          total: 0,
+        })
       }
-    } else {
-      setSaleType(newType)
+      const client = clientMap.get(clientKey)
+      client.sales.push(sale)
+      sale.saleItems?.forEach((item: any) => {
+        client.itemCount += item.quantity
+        client.subtotal += Number(item.unitPrice) * Number(item.quantity)
+        client.totalDiscount += Number(item.discount || 0)
+        client.total += Number(item.total)
+      })
+    })
+    const result = Array.from(clientMap.values())
+    if (search.trim()) {
+      return result.filter(c => c.customerName.toLowerCase().includes(search.toLowerCase()) || c.customerPhone.includes(search))
     }
+    return result
+  }, [sales, view, dateFilter, search])
+
+  // ── Totals for footer ─────────────────────────────────────────────────────
+  const totalAmount   = transactionRows.reduce((sum, row) => sum + Number(row.amount), 0)
+  const totalDiscount = transactionRows.reduce((sum, row) => sum + row.discount, 0)
+  const totalQty      = useMemo(() => {
+    if (!selectedProductId) return null
+    return transactionRows.reduce((sum, row) => {
+      const match = row.description.match(/x(\d+)pcs/)
+      return sum + (match ? parseInt(match[1]) : 0)
+    }, 0)
+  }, [transactionRows, selectedProductId])
+
+  const handlePrint = () => window.print()
+
+  const handlePrintClientReceipt = (client: any) => {
+    const win = window.open('', '_blank', 'width=400,height=600')
+    if (!win) return
+    const date = dateFilter ? new Date(dateFilter).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'All dates'
+    const rows = client.sales.flatMap((sale: any) =>
+      sale.saleItems.map((item: any) => {
+        const lpgLabel = item.lpgVariant === 'REFILL' ? ' (Refill)' : item.lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : item.lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
+        const disc = Number(item.discount || 0)
+        return `<tr>
+          <td style="padding:6px 4px;border-bottom:1px solid #eee">${item.product?.name}${lpgLabel}</td>
+          <td style="text-align:center;padding:6px 4px;border-bottom:1px solid #eee">${item.quantity}</td>
+          <td style="text-align:right;padding:6px 4px;border-bottom:1px solid #eee">KES ${Number(item.unitPrice).toLocaleString()}</td>
+          ${disc > 0 ? `<td style="text-align:right;padding:6px 4px;border-bottom:1px solid #eee;color:#16a34a">-KES ${disc.toLocaleString()}</td>` : '<td style="border-bottom:1px solid #eee"></td>'}
+          <td style="text-align:right;padding:6px 4px;border-bottom:1px solid #eee;font-weight:bold">KES ${Number(item.total).toLocaleString()}</td>
+        </tr>`
+      })
+    ).join('')
+    win.document.write(`<!DOCTYPE html><html><head><title>Wholesale Receipt — ${client.customerName}</title>
+    <style>body{font-family:Arial,sans-serif;padding:24px;max-width:420px;margin:auto;font-size:13px}h2{text-align:center;margin:0 0 4px}p{margin:2px 0;text-align:center;color:#555}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#0f172a;color:white;padding:8px 4px;text-align:left;font-size:12px}th:not(:first-child){text-align:right}.total-row td{font-weight:bold;font-size:14px;padding-top:10px}.disc-row td{color:#16a34a}.footer{text-align:center;margin-top:24px;font-size:11px;color:#999;border-top:1px dashed #ccc;padding-top:12px}@media print{body{padding:8px}}</style>
+    </head><body>
+    <h2>NJUGUSH ENTERPRISES</h2><p>Wholesale Receipt</p>
+    <p style="margin-top:12px"><strong>${client.customerName}</strong></p>
+    ${client.customerPhone ? `<p>${client.customerPhone}</p>` : ''}
+    ${client.branchName ? `<p>Branch: ${client.branchName}</p>` : ''}
+    <p>Date: ${date}</p>
+    <table>
+      <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit</th><th style="text-align:right">Disc</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <table style="margin-top:8px">
+      ${client.totalDiscount > 0 ? `<tr class="disc-row"><td colspan="4">Total Discount</td><td style="text-align:right;font-weight:bold">- KES ${client.totalDiscount.toLocaleString()}</td></tr>` : ''}
+      <tr class="total-row"><td colspan="4">TOTAL DUE</td><td style="text-align:right">KES ${client.total.toLocaleString()}</td></tr>
+    </table>
+    <div class="footer">Thank you for your business!<br/>Printed ${new Date().toLocaleString('en-GB')}</div>
+    <script>window.onload=()=>{ window.print(); window.onafterprint=()=>window.close() }</script>
+    </body></html>`)
+    win.document.close()
   }
 
-  const buildSaleData = () => ({
-    branchId,
-    type: saleType,
-    customerId: requiresCustomer ? selectedCustomerId : undefined,
-    customerName: !requiresCustomer && customerName.trim() ? customerName.trim() : undefined,
-    idempotencyKey: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `sale_${Date.now()}_${Math.random()}`,
-    discountReason: discountReason.trim() || undefined,
-    managerOverrideCode: managerOverrideCode.trim() || undefined,
-    items: items.map(item => {
-      const [productId, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
-      return {
-        productId,
-        quantity: item.quantity,
-        discount: item.discount,
-        ...(lpgVariant ? { lpgVariant } : {}),
-      }
-    }),
-  })
-
-  const totalDiscount = getTotalDiscount()
-  const subtotal = getSubtotal()
-  const total = getTotal()
-
-  const handleCheckout = () => {
-    if (items.length === 0) return toast.error('Cart is empty')
-    if (requiresCustomer && !selectedCustomerId) return toast.error('Please select a customer for this sale')
-
-    // Tracked cylinder assignment is optional (no scanner required)
-
-    // Verify discount limits for branch manager
-    const requiresOverride = user?.role === 'BRANCH_MANAGER' && (totalDiscount > 500 || totalDiscount > (subtotal * 0.10 + 0.01))
-    if (requiresOverride && !managerOverrideCode.trim()) {
-      setOverrideModalOpen(true)
-      return
-    }
-
-    const saleData = buildSaleData()
-    if (saleType === SaleType.INVOICE) {
-      createSaleMutation.mutate(saleData)
-    } else {
-      setPendingSaleData(saleData)
-      setSplitModalOpen(true)
-    }
-  }
-
-  const handlePaymentConfirm = (payments: PaymentEntry[]) => {
-    setSplitModalOpen(false)
-    if (pendingSaleData) {
-      createSaleMutation.mutate({ ...pendingSaleData, payments })
-    }
-  }
-
-  const handleLpgSelect = (type: 'REFILL' | 'EMPTY_SHELL' | 'COMPLETE_SET') => {
-    if (!selectedInvItem) return
-    const p = selectedInvItem.product
-    const baseGasPrice = saleType === SaleType.WHOLESALE ? Number(p.wholesalePrice || p.price) : Number(p.price)
-    const rawEmptyPrice = saleType === SaleType.WHOLESALE ? (p.wholesaleEmptyPrice || p.emptyPrice) : p.emptyPrice
-    const emptyPrice = rawEmptyPrice != null ? Number(rawEmptyPrice) : null
-
-    if (type === 'REFILL') {
-      if (selectedInvItem.fullCylinders > 0) {
-        addItem({ ...p, id: `${p.id}${VARIANT_SEPARATOR}REFILL`, name: `${p.name} (Refill)`, price: baseGasPrice }, 1)
-        toast.success(`Added ${p.name} Refill`)
-      } else toast.error('No full cylinders in stock!')
-    } else if (type === 'EMPTY_SHELL') {
-      if (emptyPrice == null) toast.error('Empty shell price is not set for this product')
-      else if (selectedInvItem.emptyCylinders > 0) {
-        addItem({ ...p, id: `${p.id}${VARIANT_SEPARATOR}EMPTY_SHELL`, name: `${p.name} (Empty Shell)`, price: emptyPrice }, 1)
-        toast.success(`Added ${p.name} Empty Shell`)
-      } else toast.error('No empty shells in stock!')
-    } else if (type === 'COMPLETE_SET') {
-      if (emptyPrice == null) toast.error('Empty shell price is not set for this product')
-      else if (selectedInvItem.fullCylinders > 0) {
-        addItem({ ...p, id: `${p.id}${VARIANT_SEPARATOR}COMPLETE_SET`, name: `${p.name} (Complete Set)`, price: baseGasPrice + emptyPrice }, 1)
-        toast.success(`Added ${p.name} Complete Set`)
-      } else toast.error('No full cylinders in stock to make a complete set!')
-    }
-    setLpgModalOpen(false)
-    setSearch('')
-  }
+  const productFilterActive = !!selectedProductId
 
   return (
-    <div className="flex flex-col lg:min-h-[calc(100vh-6rem)] bg-background space-y-4 pb-10 lg:pb-0">
-      <div className="flex-shrink-0">
-        <h1 className="text-2xl font-bold">New Sale</h1>
-        <p className="text-muted-foreground">Search and tap products to add to cart</p>
+    <div className="space-y-4 print:m-0 print:p-0">
+
+      {/* ── HEADER ── */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
+        <div>
+          <h1 className="text-2xl font-bold">Sales History</h1>
+          <p className="text-muted-foreground">
+            {productFilterActive
+              ? `Showing all sales of "${selectedProductName}" across all dates`
+              : 'Daily transactions grouped by calendar date.'}
+          </p>
+        </div>
+        {view !== 'wholesale' && (
+          <Button onClick={handlePrint} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Printer className="w-4 h-4 mr-2" /> Print Statement
+          </Button>
+        )}
       </div>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6 flex-1 min-h-0">
+      {/* ── FILTERS ── */}
+      <div className="flex flex-col gap-3 bg-card p-3 rounded-lg border shadow-sm print:hidden">
+        <div className="flex flex-col lg:flex-row gap-3 justify-between items-start lg:items-center">
+          <div className="flex flex-col lg:flex-row w-full lg:w-auto gap-3">
 
-        {/* ── PRODUCTS GRID ── */}
-        <div className="lg:col-span-2 flex flex-col h-[50vh] lg:h-full bg-muted/10 rounded-xl border overflow-hidden shadow-sm">
-          <div className="p-4 bg-card border-b flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+            {/* Branch selector — admin only */}
+            {isAdmin && (
+              <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger className="w-full lg:w-44 border">
+                  <Store className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Select Branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Branches</SelectItem>
+                  {branches?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Product filter */}
+            <Select
+              value={selectedProductId || 'all'}
+              onValueChange={(val) => {
+                if (val === 'all') {
+                  clearProductFilter()
+                } else {
+                  const product = availableProducts.find(p => p.id === val)
+                  setSelectedProductId(val)
+                  setSelectedProductName(product?.name || '')
+                }
+              }}
+            >
+              <SelectTrigger className={`w-full lg:w-52 border ${productFilterActive ? 'border-blue-400 bg-blue-50/30 text-blue-700' : ''}`}>
+                <Package className={`w-4 h-4 mr-2 shrink-0 ${productFilterActive ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                <SelectValue placeholder="All products" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All products</SelectItem>
+                {availableProducts.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Search */}
+            <div className="relative w-full lg:w-56">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search product name, code, or scan barcode..."
+                placeholder={view === 'wholesale' ? 'Search client...' : 'Search ref or item...'}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-12 h-14 text-lg focus-visible:ring-primary shadow-sm"
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 w-full"
+              />
+            </div>
+
+            {/* Payment Method filter */}
+            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <SelectTrigger className="w-full lg:w-36 border">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Payments</SelectItem>
+                <SelectItem value="CASH">Cash</SelectItem>
+                <SelectItem value="PAYBILL">PayBill</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Date — disabled when product filter is active */}
+            <div className={`flex items-center gap-2 transition-opacity ${productFilterActive ? 'opacity-30 pointer-events-none' : ''}`}>
+              <Calendar className="w-4 h-4 text-muted-foreground hidden sm:block shrink-0" />
+              <Input
+                type="date"
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                className="w-auto"
+                disabled={productFilterActive}
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {filteredInventory.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
-                <Package className="w-12 h-12 mb-4 opacity-30" />
-                <p>No products found {search.trim() !== '' && `matching "${search}"`}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {filteredInventory.map((inv: any) => {
-                  const product = inv.product
-                  const isLpg = product.type === 'LPG_REFILL' || product.type === 'LPG_CYLINDER'
-                  const availableStock = isLpg ? (inv.fullCylinders || 0) : inv.quantity
-                  const displayPrice = saleType === SaleType.WHOLESALE
-                    ? (product.wholesalePrice || product.price) : product.price
-                  return (
-                    <Card
-                      key={product.id}
-                      className="cursor-pointer transition-all hover:border-primary hover:shadow-md bg-card"
-                      onClick={() => {
-                        if (isLpg) {
-                          setSelectedInvItem({ ...inv, emptyCylinders: (inv.quantity || 0) - (inv.fullCylinders || 0) })
-                          setLpgModalOpen(true)
-                        } else {
-                          addItem({ ...product, price: displayPrice }, 1)
-                          setSearch('')
-                        }
-                      }}
-                    >
-                      <CardContent className="p-4 flex flex-col h-full justify-between gap-3">
-                        <div className="flex items-start justify-between">
-                          <div className={`p-2 rounded-lg ${isLpg ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                            {isLpg ? <Flame size={16} /> : <Package size={16} />}
-                          </div>
-                          <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${availableStock <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {availableStock} left
-                          </span>
+
+          {/* View tabs */}
+          <div className="flex p-1 bg-muted/50 rounded-lg border w-full lg:w-auto shrink-0">
+            <button onClick={() => handleViewChange('all')} className={`flex-1 lg:px-5 py-1.5 text-sm font-bold rounded-md transition-all ${view === 'all' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>All</button>
+            <button onClick={() => handleViewChange('retail')} className={`flex-1 lg:px-5 py-1.5 text-sm font-bold rounded-md transition-all ${view === 'retail' ? 'bg-blue-600 shadow text-white' : 'text-muted-foreground'}`}>Retail</button>
+            <button onClick={() => handleViewChange('wholesale')} className={`flex-1 lg:px-5 py-1.5 text-sm font-bold rounded-md transition-all ${view === 'wholesale' ? 'bg-purple-600 shadow text-white' : 'text-muted-foreground'}`}>Wholesale</button>
+          </div>
+        </div>
+
+        {/* Product filter active banner */}
+        {productFilterActive && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-400/30 rounded-lg text-sm">
+            <Package className="w-4 h-4 text-blue-500 shrink-0" />
+            <span className="text-blue-700 dark:text-blue-300 flex-1">
+              Showing <strong>all sales</strong> of <strong>{selectedProductName}</strong> — date filter bypassed
+            </span>
+            <button
+              onClick={clearProductFilter}
+              className="ml-auto flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-semibold shrink-0"
+            >
+              <X className="w-3.5 h-3.5" /> Clear
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── WHOLESALE CLIENT VIEW ── */}
+      {view === 'wholesale' && (
+        <div className="space-y-3">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading wholesale clients...</div>
+          ) : wholesaleClients.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground bg-card border rounded-xl">
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
+              <p>No wholesale sales found for {dateFilter ? new Date(dateFilter + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'this period'}.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">{wholesaleClients.length} client{wholesaleClients.length !== 1 ? 's' : ''}</p>
+              {wholesaleClients.map((client) => (
+                <Card key={client.clientKey} className="bg-card border hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedClient(client)}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0">
+                          {client.customerName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <h4 className="font-semibold text-sm line-clamp-2 leading-snug">{product.name}</h4>
-                          <p className="text-lg font-black text-primary mt-1">{formatCurrency(displayPrice)}</p>
+                          <p className="font-bold">{client.customerName}</p>
+                          {client.customerPhone && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Phone className="w-3 h-3" /> {client.customerPhone}</p>}
+                          {isAdmin && client.branchName && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Store className="w-3 h-3" /> {client.branchName}</p>}
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-black text-lg text-purple-700">{formatCurrency(client.total)}</p>
+                          <p className="text-xs text-muted-foreground">{client.itemCount} unit{client.itemCount !== 1 ? 's' : ''}</p>
+                          {client.totalDiscount > 0 && <p className="text-xs text-emerald-600">- {formatCurrency(client.totalDiscount)} disc</p>}
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4 flex justify-between items-center">
+                <span className="font-bold text-purple-900 dark:text-purple-200">Day Total</span>
+                <span className="text-2xl font-black text-purple-700">{formatCurrency(wholesaleClients.reduce((s, c) => s + c.total, 0))}</span>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
+      )}
 
-        {/* ── CART ── */}
-        <div className="flex flex-col h-auto lg:h-full">
-          <Card className="flex flex-col h-full border-primary/10 shadow-md">
-            <CardHeader className="pb-3 flex-shrink-0 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-primary" />
-                Cart ({items.length})
-              </CardTitle>
-              <div className="flex items-center gap-1.5">
-                {parkedCarts.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1 text-xs border-amber-300 dark:border-emerald-500/40 text-amber-800 dark:text-emerald-300 bg-amber-50 dark:bg-emerald-950/30 hover:bg-amber-100 dark:hover:bg-emerald-950/50"
-                    onClick={() => setParkedModalOpen(true)}
-                  >
-                    <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-emerald-400" />
-                    Parked ({parkedCarts.length})
-                  </Button>
-                )}
-                {items.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                    title="Park this cart to serve another customer"
-                    onClick={() => {
-                      const note = window.prompt('Cart label/note (e.g. customer name or car reg):')
-                      if (note !== null) {
-                        parkCurrentCart(note.trim() || undefined)
-                        toast.success('Cart parked')
-                      }
-                    }}
-                  >
-                    <Bookmark className="w-3.5 h-3.5" />
-                    Park
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex-1 flex flex-col min-h-[300px] overflow-hidden space-y-4">
-
-              {/* Sale type tabs */}
-              <div className="flex gap-2 flex-shrink-0 bg-muted/30 p-1 rounded-lg">
-                <Button variant={saleType === SaleType.CASH ? 'default' : 'ghost'} className="flex-1" onClick={() => handleTypeSwitch(SaleType.CASH)}>Retail</Button>
-                <Button variant={saleType === SaleType.WHOLESALE ? 'default' : 'ghost'} className={`flex-1 ${saleType === SaleType.WHOLESALE ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`} onClick={() => handleTypeSwitch(SaleType.WHOLESALE)}>Wholesale</Button>
-                <Button variant={saleType === SaleType.INVOICE ? 'default' : 'ghost'} className={`flex-1 ${saleType === SaleType.INVOICE ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}`} onClick={() => handleTypeSwitch(SaleType.INVOICE)}>Invoice</Button>
-              </div>
-
-              {/* Cart items */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 border rounded-lg p-2 bg-muted/20 min-h-[150px]">
-                {items.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-60">
-                    <ShoppingCart className="w-12 h-12 mb-2" />
-                    <p>Cart is empty</p>
-                  </div>
-                ) : items.map((item) => {
-                  const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
-                  const lineTotal = item.unitPrice * item.quantity - item.discount
-                  return (
-                    <div key={item.productId} className="bg-card border rounded-lg shadow-sm overflow-hidden p-3 transition-colors hover:border-primary/40">
-                      {/* Top Row: Name, variant badge, and delete */}
-                      <div className="flex items-start justify-between gap-2">
+      {/* ── CLIENT DETAIL MODAL ── */}
+      <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><User className="w-5 h-5 text-purple-600" />{selectedClient?.customerName}</DialogTitle>
+            <DialogDescription className="flex items-center gap-4">
+              {selectedClient?.customerPhone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selectedClient.customerPhone}</span>}
+              {selectedClient?.branchName && <span className="flex items-center gap-1"><Store className="w-3 h-3" /> {selectedClient.branchName}</span>}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-4 py-2 min-h-0">
+            {selectedClient?.sales?.map((sale: any) => (
+              <div key={sale.id} className="border rounded-lg overflow-hidden">
+                <div className="bg-muted/30 px-3 py-2 flex justify-between items-center">
+                  <span className="text-xs font-mono text-muted-foreground">{sale.saleCode}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div className="divide-y">
+                  {sale.saleItems?.map((item: any) => {
+                    const lpgLabel = item.lpgVariant === 'REFILL' ? ' (Refill)' : item.lpgVariant === 'EMPTY_SHELL' ? ' (Empty Shell)' : item.lpgVariant === 'COMPLETE_SET' ? ' (Complete Set)' : ''
+                    const disc = Number(item.discount || 0)
+                    return (
+                      <div key={item.id} className="px-3 py-2 flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-sm sm:text-base text-foreground leading-snug break-words">
-                              {item.product.name}
-                            </span>
-                            {lpgVariant === 'REFILL' && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border dark:border-cyan-500/40">
-                                Refill
-                              </span>
-                            )}
-                            {lpgVariant === 'EMPTY_SHELL' && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-500/40">
-                                Empty Shell
-                              </span>
-                            )}
-                            {lpgVariant === 'COMPLETE_SET' && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border dark:border-emerald-500/40">
-                                Complete Set
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-muted-foreground font-medium">
-                              {formatCurrency(item.unitPrice)} each
-                            </span>
-                            {item.discount > 0 && (
-                              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                -{formatCurrency(item.discount)} off
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-sm font-medium truncate">{item.product?.name}{lpgLabel}</p>
+                          <p className="text-xs text-muted-foreground">{item.quantity} × {formatCurrency(item.unitPrice)}{disc > 0 && <span className="text-emerald-600 ml-1">- {formatCurrency(disc)}</span>}</p>
                         </div>
-
-                        {/* Line total & remove */}
-                        <div className="text-right shrink-0 flex items-center gap-2">
-                          <span className="text-sm sm:text-base font-extrabold text-foreground">
-                            {formatCurrency(lineTotal)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-md"
-                            title="Remove item"
-                            onClick={() => removeItem(item.productId)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                        <p className="font-bold text-sm shrink-0">{formatCurrency(item.total)}</p>
                       </div>
-
-                      {/* Bottom Controls Row: Stepper and Discount button */}
-                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/40 gap-2">
-                        <div className="flex items-center gap-1.5 bg-muted/40 rounded-md border p-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded hover:bg-muted font-bold text-foreground"
-                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </Button>
-                          <span className="w-8 text-center text-sm font-black text-foreground">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded hover:bg-muted font-bold text-foreground"
-                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`h-7 px-2.5 text-xs font-medium gap-1 rounded-md ${
-                            item.discount > 0
-                              ? 'text-emerald-700 bg-emerald-100/70 dark:bg-emerald-950/50 dark:text-emerald-300'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                          onClick={() => setDiscountOpenFor(discountOpenFor === item.productId ? null : item.productId)}
-                        >
-                          <Tag className="w-3.5 h-3.5" />
-                          {item.discount > 0 ? `Discount: KES ${item.discount}` : 'Add Discount'}
-                        </Button>
-                      </div>
-
-                      {/* Inline discount input — only shown when toggled */}
-                      {discountOpenFor === item.productId && (
-                        <div className="mt-2 p-2 rounded-md bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-                          <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">Disc KES:</span>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={item.unitPrice * item.quantity}
-                            placeholder="0"
-                            value={item.discount || ''}
-                            onChange={(e) => updateItemDiscount(item.productId, Number(e.target.value))}
-                            className="h-7 text-sm w-28 border-emerald-300 dark:border-emerald-700 bg-background focus-visible:ring-emerald-400"
-                            autoFocus
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            Net: {formatCurrency(item.unitPrice * item.quantity - item.discount)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex-shrink-0 space-y-3">
-                {/* Customer name — cash/retail only */}
-                {!requiresCustomer && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer Name (optional)</Label>
-                    <Input placeholder="e.g. John Kamau" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="h-9 text-sm" />
-                  </div>
-                )}
-
-                {/* Customer select — invoice & wholesale */}
-                {requiresCustomer && (
-                  <div className="space-y-1.5 p-3 bg-amber-50 dark:bg-emerald-950/20 border border-amber-200 dark:border-emerald-500/40 rounded-lg">
-                    <Label className="text-xs font-bold text-amber-900 dark:text-emerald-300 uppercase tracking-wider">Select Customer (Required)</Label>
-                    <select
-                      value={selectedCustomerId}
-                      onChange={(e) => setSelectedCustomerId(e.target.value)}
-                      className="w-full p-2.5 border border-amber-300 dark:border-emerald-500/40 rounded-md text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-emerald-500/60 appearance-none"
-                    >
-                      <option value="">-- Choose a customer --</option>
-                      {customers.map((c: any) => (
-                        <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <Separator />
-
-                {/* Totals */}
-                <div className="space-y-1.5 text-sm bg-slate-900 text-white p-4 rounded-xl shadow-inner">
-                  <div className="flex justify-between text-slate-300">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  {totalDiscount > 0 && (
-                    <div className="flex justify-between text-emerald-400 font-medium">
-                      <span>Discounts</span>
-                      <span>- {formatCurrency(totalDiscount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-xl font-black text-white pt-2 mt-2 border-t border-slate-700">
-                    <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
-                  </div>
+                    )
+                  })}
+                </div>
+                <div className="px-3 py-2 bg-muted/20 flex justify-between font-bold text-sm border-t">
+                  <span>Sale total</span>
+                  <span>{formatCurrency(sale.total)}</span>
                 </div>
               </div>
-            </CardContent>
+            ))}
+          </div>
+          <div className="border-t pt-4 space-y-1.5">
+            {selectedClient?.totalDiscount > 0 && (
+              <div className="flex justify-between text-sm text-emerald-600">
+                <span>Total Discounts</span><span>- {formatCurrency(selectedClient.totalDiscount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-black text-lg">
+              <span>Day Total</span>
+              <span className="text-purple-700">{formatCurrency(selectedClient?.total)}</span>
+            </div>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setSelectedClient(null)}>Close</Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white" onClick={() => handlePrintClientReceipt(selectedClient)}>
+              <Printer className="w-4 h-4 mr-2" /> Print Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <CardFooter className="pt-2 flex-shrink-0">
-              <Button
-                className={`w-full text-lg font-bold h-14 shadow-lg ${saleType === SaleType.WHOLESALE ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
-                disabled={items.length === 0 || createSaleMutation.isPending || (requiresCustomer && !selectedCustomerId)}
-                onClick={handleCheckout}
-              >
-                {createSaleMutation.isPending ? 'Processing...' : `Charge ${formatCurrency(total)}`}
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-
-      {/* Split Payment Modal */}
-      {splitModalOpen && pendingSaleData && (
-        <PaymentSplitModal
-          total={total}
-          pendingSaleData={pendingSaleData}
-          onConfirm={handlePaymentConfirm}
-          onClose={() => { setSplitModalOpen(false); setPendingSaleData(null) }}
-        />
-      )}
-
-
-      {/* Discount Manager Override Modal */}
-      <Dialog open={overrideModalOpen} onOpenChange={setOverrideModalOpen}>
-        <DialogContent className="sm:max-w-md bg-card text-card-foreground">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-emerald-400">
-              <ShieldAlert className="w-5 h-5" />
-              Manager Authorization Required
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Total discounts of <strong>{formatCurrency(totalDiscount)}</strong> exceed your branch manager limit (Max 10% or KES 500). Enter the administrator override code and reason to proceed.
+      {/* ── ALL / RETAIL TABLE ── */}
+      {view !== 'wholesale' && (
+        <>
+          {/* Print header */}
+          <div className="hidden print:block text-center mb-6">
+            <h1 className="text-2xl font-black">NJUGUSH POS ENTERPRISE</h1>
+            <h2 className="text-lg font-bold uppercase mt-1">
+              {productFilterActive ? `Product Sales Report — ${selectedProductName}` : 'Transaction History Statement'}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {productFilterActive ? 'All dates' : `Business Date: ${dateFilter || 'All Time'}`}
             </p>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Manager Override Code *</Label>
-              <div className="relative">
-                <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Enter override code"
-                  value={managerOverrideCode}
-                  onChange={(e) => setManagerOverrideCode(e.target.value)}
-                  className="pl-9 h-10"
-                />
+          </div>
+
+          <div className="bg-card border rounded-xl shadow-sm overflow-hidden print:border-none print:shadow-none">
+            <div className="overflow-x-auto">
+              <Table className="print:text-xs">
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="w-[50px] font-bold">#</TableHead>
+                    <TableHead className="font-bold whitespace-nowrap">TIME</TableHead>
+                    <TableHead className="font-bold min-w-[220px]">DESCRIPTION</TableHead>
+                    <TableHead className="font-bold">TYPE</TableHead>
+                    <TableHead className="font-bold">PAYMENT</TableHead>
+                    <TableHead className="font-bold">REFERENCE</TableHead>
+                    {isAdmin && selectedBranchId === 'all' && <TableHead className="font-bold print:hidden">BRANCH</TableHead>}
+                    <TableHead className="font-bold text-right">AMOUNT (KES)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={isAdmin && selectedBranchId === 'all' ? 8 : 7} className="text-center py-10 text-muted-foreground">Loading transactions...</TableCell></TableRow>
+                  ) : transactionRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isAdmin && selectedBranchId === 'all' ? 8 : 7} className="text-center py-10 text-muted-foreground">
+                        {productFilterActive
+                          ? `No sales found for "${selectedProductName}".`
+                          : 'No transactions found for the selected criteria.'}
+                      </TableCell>
+                    </TableRow>
+                  ) : transactionRows.map((row, idx) => (
+                    <TableRow key={row.id} className="hover:bg-muted/20">
+                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.date}</TableCell>
+                      <TableCell className="font-medium">
+                        {row.description}
+                        {row.customer && <span className="block text-xs text-muted-foreground mt-0.5">Client: {row.customer}</span>}
+                        {row.discount > 0 && <span className="block text-xs text-emerald-600 mt-0.5">Disc: - {formatCurrency(row.discount)}</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-[10px] py-0 ${row.type === 'WHOLESALE' ? 'text-purple-700 border-purple-200 bg-purple-50' : 'text-blue-700 border-blue-200 bg-blue-50'}`}>
+                          {row.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-[10px] py-0 font-medium ${row.paymentMethod?.includes('PayBill') ? 'text-amber-700 border-amber-300 bg-amber-50' : 'text-emerald-700 border-emerald-300 bg-emerald-50'}`}>
+                          {row.paymentMethod}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{row.reference}</TableCell>
+                      {isAdmin && selectedBranchId === 'all' && (
+                        <TableCell className="print:hidden">
+                          <Badge variant="secondary" className="text-[10px] font-normal py-0">
+                            <Store className="w-3 h-3 mr-1" /> {row.branchName}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      <TableCell className="text-right font-bold text-primary">{formatCurrency(row.amount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Footer totals */}
+            <div className="bg-muted/30 border-t p-4 flex justify-end items-center gap-8">
+              {productFilterActive && totalQty !== null && (
+                <div className="text-right">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Total Units</p>
+                  <p className="text-lg font-black text-blue-600">{totalQty} pcs</p>
+                </div>
+              )}
+              {totalDiscount > 0 && (
+                <div className="text-right">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Total Discounts</p>
+                  <p className="text-lg font-black text-emerald-600">- {formatCurrency(totalDiscount)}</p>
+                </div>
+              )}
+              <div className="text-right">
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                  {productFilterActive ? 'Product Revenue' : 'Total Sales'}
+                </p>
+                <p className="text-2xl font-black text-emerald-600">{formatCurrency(totalAmount)}</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Discount Reason (Optional)</Label>
-              <Input
-                placeholder="e.g. Loyalty customer, promotional offer..."
-                value={discountReason}
-                onChange={(e) => setDiscountReason(e.target.value)}
-                className="h-10"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOverrideModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!managerOverrideCode.trim()) {
-                    toast.error('Please enter the manager override code')
-                    return
-                  }
-                  setOverrideModalOpen(false)
-                  const saleData = buildSaleData()
-                  if (saleType === SaleType.INVOICE) {
-                    createSaleMutation.mutate(saleData)
-                  } else {
-                    setPendingSaleData(saleData)
-                    setSplitModalOpen(true)
-                  }
-                }}
-              >
-                Authorize & Checkout
-              </Button>
-            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* LPG selection modal */}
-      <Dialog open={lpgModalOpen} onOpenChange={setLpgModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Select Sale Type: {selectedInvItem?.product?.name}</DialogTitle></DialogHeader>
-          <div className="grid gap-3 py-4">
-            <Button variant="outline" className={`h-16 justify-start text-left px-4 ${selectedInvItem?.fullCylinders === 0 ? 'opacity-50' : 'hover:border-blue-400'}`} onClick={() => handleLpgSelect('REFILL')} disabled={selectedInvItem?.fullCylinders === 0}>
-              <Flame className="w-5 h-5 mr-3 text-blue-500" />
-              <div className="flex-1"><div className="flex justify-between w-full"><p className="font-bold">Gas Refill Only</p><span className="text-xs font-medium text-blue-600">{selectedInvItem?.fullCylinders} left</span></div><p className="text-xs text-muted-foreground">Customer returns empty shell</p></div>
-            </Button>
-            <Button variant="outline" className={`h-16 justify-start text-left px-4 ${(selectedInvItem?.emptyCylinders <= 0 || selectedInvItem?.product?.emptyPrice == null) ? 'opacity-50' : 'hover:border-amber-400 dark:hover:border-emerald-400/60'}`} onClick={() => handleLpgSelect('EMPTY_SHELL')} disabled={selectedInvItem?.emptyCylinders <= 0 || selectedInvItem?.product?.emptyPrice == null}>
-              <Package className="w-5 h-5 mr-3 text-amber-600 dark:text-emerald-400" />
-              <div className="flex-1"><div className="flex justify-between w-full"><p className="font-bold">Empty Cylinder</p><span className="text-xs font-medium text-amber-600">{Math.max(0, selectedInvItem?.emptyCylinders || 0)} left</span></div><p className="text-xs text-muted-foreground">{saleType === SaleType.WHOLESALE ? (selectedInvItem?.product?.wholesaleEmptyPrice ? formatCurrency(selectedInvItem.product.wholesaleEmptyPrice) : 'price not set') : (selectedInvItem?.product?.emptyPrice != null ? formatCurrency(selectedInvItem.product.emptyPrice) : 'price not set')}</p></div>
-            </Button>
-            <Button className={`h-16 justify-start text-left px-4 ${(selectedInvItem?.fullCylinders === 0 || selectedInvItem?.product?.emptyPrice == null) ? 'opacity-50' : ''}`} onClick={() => handleLpgSelect('COMPLETE_SET')} disabled={selectedInvItem?.fullCylinders === 0 || selectedInvItem?.product?.emptyPrice == null}>
-              <Flame className="w-5 h-5 mr-3" />
-              <div className="flex-1"><p className="font-bold">Complete Set (Gas + Shell)</p><p className="text-xs opacity-90">{saleType === SaleType.WHOLESALE ? formatCurrency(Number(selectedInvItem?.product?.wholesalePrice || 0) + Number(selectedInvItem?.product?.wholesaleEmptyPrice || 0)) : formatCurrency(Number(selectedInvItem?.product?.price || 0) + Number(selectedInvItem?.product?.emptyPrice || 0))}</p></div>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Invoice receipt modal */}
-      <Dialog open={!!invoiceReceipt} onOpenChange={() => setInvoiceReceipt(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-amber-600 flex items-center gap-2"><Package className="w-5 h-5" /> Invoice Generated Successfully</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">The invoice has been saved. Copy the message below to send to the customer.</p>
-            <textarea readOnly className="w-full h-48 p-3 bg-muted rounded-md text-sm border focus:outline-none resize-none"
-              value={`Hello ${invoiceReceipt?.name},\n\nAn invoice (${invoiceReceipt?.code}) for KES ${invoiceReceipt?.total.toLocaleString()} has been generated for your recent purchase at Njugush POS.\n\nItems:\n- ${invoiceReceipt?.itemsStr}\n\nPlease arrange payment. Thank you!`}
-            />
-            <Button className="w-full bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => {
-                const msg = `Hello ${invoiceReceipt?.name},\n\nAn invoice (${invoiceReceipt?.code}) for KES ${invoiceReceipt?.total.toLocaleString()} has been generated for your recent purchase at Njugush POS.\n\nItems:\n- ${invoiceReceipt?.itemsStr}\n\nPlease arrange payment. Thank you!`
-                navigator.clipboard.writeText(msg)
-                toast.success('Message copied to clipboard!')
-              }}>Copy WhatsApp Message</Button>
-            <Button variant="outline" className="w-full" onClick={() => setInvoiceReceipt(null)}>Close</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Parked Carts Modal */}
-      <Dialog open={parkedModalOpen} onOpenChange={setParkedModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Bookmark className="w-5 h-5 text-primary" /> Parked Carts ({parkedCarts.length})
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 py-2 max-h-[60vh] overflow-y-auto">
-            {parkedCarts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No parked carts.</p>
-            ) : (
-              parkedCarts.map((pc) => {
-                const pcTotal = pc.items.reduce((acc, it) => acc + (it.unitPrice * it.quantity - (it.discount || 0)), 0)
-                return (
-                  <div key={pc.id} className="p-3 border rounded-lg bg-card flex items-center justify-between gap-3 shadow-sm hover:border-primary/40 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm truncate">{pc.label || pc.note || 'Untitled Cart'}</span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {new Date(pc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {pc.items.length} item{pc.items.length !== 1 ? 's' : ''} • <span className="font-semibold text-primary">{formatCurrency(pcTotal)}</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="h-8 gap-1 text-xs"
-                        onClick={() => {
-                          if (items.length > 0 && !window.confirm('Restoring this parked cart will replace your current active cart items. Continue?')) {
-                            return
-                          }
-                          recallCart(pc.id)
-                          setParkedModalOpen(false)
-                          toast.success('Parked cart restored')
-                        }}
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" /> Recall
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          removeParkedCart(pc.id)
-                          toast.info('Parked cart discarded')
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Thermal Receipt Modal */}
-      {completedReceipt && (
-        <ThermalReceiptModal
-          receipt={completedReceipt}
-          onClose={() => setCompletedReceipt(null)}
-        />
+        </>
       )}
 
+      {/* End of month prompt */}
+      <Dialog open={showEndOfMonthPrompt} onOpenChange={setShowEndOfMonthPrompt}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><FileDown className="w-5 h-5 text-primary" /> End of Month Accountability</DialogTitle>
+            <DialogDescription>It is the end of the month! Please download the monthly receipts for all branches to ensure financial accountability.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEndOfMonthPrompt(false)}>Remind Me Later</Button>
+            <Button onClick={() => {
+              const k = `${new Date().getFullYear()}-${new Date().getMonth()}`
+              localStorage.setItem(`monthly_receipt_downloaded_${k}`, 'true')
+              setShowEndOfMonthPrompt(false)
+              toast.success('Monthly receipts downloaded!')
+            }}>Download Receipts</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <style dangerouslySetInnerHTML={{__html: `@media print { @page { margin:1cm; size:landscape; } body * { visibility:hidden; } .print\\:m-0, .print\\:m-0 * { visibility:visible; } .print\\:m-0 { position:absolute; left:0; top:0; width:100%; } aside, nav, header { display:none!important; } }`}} />
     </div>
   )
 }
 
-export default NewSale
+export default SalesHistory
