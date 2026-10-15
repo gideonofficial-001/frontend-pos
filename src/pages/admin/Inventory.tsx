@@ -88,6 +88,9 @@ const Inventory = () => {
     queryFn: async () => {
       const params: any = { branchId: activeBranchId }
       if (showLowStock) params.lowStock = true
+      if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.OVERALL_MANAGER) {
+        params.includeHidden = true
+      }
       return (await inventoryApi.getAll(params)).data
     },
     enabled: !!activeBranchId,
@@ -122,6 +125,10 @@ const Inventory = () => {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['hidden-categories', activeBranchId] })
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      queryClient.invalidateQueries({ queryKey: ['branch-inventory'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['closing-stock-snapshot'] })
       toast.success(vars.hide ? 'Category hidden for this branch' : 'Category unhidden for this branch')
     },
     onError: (err: any) => {
@@ -223,7 +230,7 @@ const Inventory = () => {
     onError: (error: any) => toast.error(error?.response?.data?.message || 'Failed to create product')
   })
 
-  // 🚀 The Magic Filter: Auto-Hides Empty Categories & Sorts by Pinned status
+  // 🚀 The Magic Filter: Auto-Hides Empty Categories & Sorts by Pinned & Hidden status
   const displayCategories = useMemo(() => {
     if (!categories) return []
     const mapped = categories.map((cat: any) => {
@@ -241,12 +248,20 @@ const Inventory = () => {
     return mapped
       .filter((cat: any) => {
         if (cat.items.length === 0) return false
-        if (user?.role === UserRole.BRANCH_MANAGER && hiddenCategories.includes(cat.id)) {
+        const isStaff = user?.role !== UserRole.SUPER_ADMIN && user?.role !== UserRole.OVERALL_MANAGER
+        if (isStaff && hiddenCategories.includes(cat.id)) {
           return false
         }
         return true
       })
-      .sort((a: any, b: any) => { // Sort: Pinned first, then alphabetical
+      .sort((a: any, b: any) => {
+        const aHidden = hiddenCategories.includes(a.id)
+        const bHidden = hiddenCategories.includes(b.id)
+        // 🚀 Category Hiding Feature: When hidden, immediately pushed down the page to the bottom
+        if (!aHidden && bHidden) return -1
+        if (aHidden && !bHidden) return 1
+
+        // Within same visibility group, sort pinned first, then alphabetical
         const aPinned = pinnedCategories.includes(a.id)
         const bPinned = pinnedCategories.includes(b.id)
         if (aPinned && !bPinned) return -1
@@ -396,9 +411,17 @@ const Inventory = () => {
                 : 0
 
               const isPinned = pinnedCategories.includes(category.id)
+              const isHidden = hiddenCategories.includes(category.id)
 
               return (
-                <div key={category.id} className={`flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden ${isPinned ? 'ring-2 ring-primary/20' : ''}`}>
+                <div
+                  key={category.id}
+                  className={`flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden transition-all duration-300 ${
+                    isHidden
+                      ? 'border-dashed border-amber-300/80 dark:border-amber-700/60 bg-amber-500/[0.03] opacity-80'
+                      : ''
+                  } ${isPinned && !isHidden ? 'ring-2 ring-primary/20' : ''}`}
+                >
 
                   {/* Category header */}
                   <div className="bg-muted/30 p-4 border-b flex items-center justify-between">

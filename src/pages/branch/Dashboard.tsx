@@ -50,6 +50,29 @@ const BranchDashboard = () => {
     enabled: !!user?.branchId
   })
 
+  // 5. Fetch Hidden Categories specifically for this branch
+  const { data: hiddenCategories = [] } = useQuery<string[]>({
+    queryKey: ['hidden-categories', user?.branchId],
+    queryFn: async () => {
+      if (!user?.branchId) return []
+      try {
+        const res = await inventoryApi.getHiddenCategories(user.branchId)
+        return Array.isArray(res.data) ? res.data : []
+      } catch {
+        return []
+      }
+    },
+    enabled: !!user?.branchId,
+  })
+
+  // Filter out any hidden categories (soft-deleted from branch view & stock calculators)
+  const activeInventory = inventory.filter((inv: any) => {
+    if (inv.product?.categoryId && hiddenCategories.includes(inv.product.categoryId)) {
+      return false
+    }
+    return true
+  })
+
   // --- Calculations ---
 
   // Sales & Invoices
@@ -59,12 +82,12 @@ const BranchDashboard = () => {
   ).length || 0
 
   // 6Kg Calculations
-  const sixKgStock = inventory.filter((inv: any) => inv.product?.name?.toLowerCase().includes('6kg'))
+  const sixKgStock = activeInventory.filter((inv: any) => inv.product?.name?.toLowerCase().includes('6kg'))
   const sixKgRefills = sixKgStock.reduce((sum: number, inv: any) => sum + (inv.fullCylinders || 0), 0)
   const sixKgEmpties = sixKgStock.reduce((sum: number, inv: any) => sum + Math.max(0, (inv.quantity || 0) - (inv.fullCylinders || 0)), 0)
 
   // 13Kg Calculations
-  const thirteenKgStock = inventory.filter((inv: any) => inv.product?.name?.toLowerCase().includes('13kg'))
+  const thirteenKgStock = activeInventory.filter((inv: any) => inv.product?.name?.toLowerCase().includes('13kg'))
   const thirteenKgRefills = thirteenKgStock.reduce((sum: number, inv: any) => sum + (inv.fullCylinders || 0), 0)
   const thirteenKgEmpties = thirteenKgStock.reduce((sum: number, inv: any) => sum + Math.max(0, (inv.quantity || 0) - (inv.fullCylinders || 0)), 0)
 

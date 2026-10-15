@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { closingStockApi, branchesApi, branchClosingsApi } from '@/api'
+import { closingStockApi, branchesApi, branchClosingsApi, inventoryApi } from '@/api'
 import { useAuthStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -121,6 +121,25 @@ export default function ClosingStock() {
     enabled:  !!selectedBranchId && !!selectedDate && activeTab === 'snapshots',
   })
 
+  const { data: hiddenCategories = [] } = useQuery<string[]>({
+    queryKey: ['hidden-categories', selectedBranchId],
+    queryFn: async () => {
+      if (!selectedBranchId) return []
+      try {
+        const res = await inventoryApi.getHiddenCategories(selectedBranchId)
+        return Array.isArray(res.data) ? res.data : []
+      } catch {
+        return []
+      }
+    },
+    enabled: !!selectedBranchId && activeTab === 'snapshots',
+  })
+
+  const visibleCategories = useMemo(() => {
+    if (!snapshot?.categories) return []
+    return snapshot.categories.filter((cat: any) => !hiddenCategories.includes(cat.id))
+  }, [snapshot?.categories, hiddenCategories])
+
   // Navigation for snapshots
   const goBack = () => {
     const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d)
@@ -144,7 +163,7 @@ export default function ClosingStock() {
     const win = window.open('', '_blank', 'width=800,height=600')
     if (!win) return
 
-    const categorySections = snapshot.categories.map((cat: any) => {
+    const categorySections = visibleCategories.map((cat: any) => {
       const isLpg = cat.name.toUpperCase().includes('LPG')
       const rows = cat.items.map((item: any) => isLpg
         ? `<tr><td>${item.productName}</td><td>${item.productCode}</td><td class="num blue">${item.fullCylinders ?? 0}</td><td class="num amber">${item.emptyCylinders ?? 0}</td></tr>`
@@ -747,7 +766,7 @@ export default function ClosingStock() {
                     Midnight Snapshot — {fmt(new Date(snapshot.date))}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Captured automatically at {new Date(snapshot.recordedAt).toLocaleTimeString()} &bull; {snapshot.totalProducts} total products tracked
+                    Captured automatically at {new Date(snapshot.recordedAt).toLocaleTimeString()} &bull; {visibleCategories.reduce((s: number, c: any) => s + c.items.length, 0)} total products tracked
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 self-start sm:self-center shrink-0">
@@ -755,7 +774,7 @@ export default function ClosingStock() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-6">
-                {snapshot.categories.map((cat: any) => {
+                {visibleCategories.map((cat: any) => {
                   const isLpg = cat.name.toUpperCase().includes('LPG')
                   return (
                     <div key={cat.id} className="space-y-2">

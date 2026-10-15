@@ -52,6 +52,20 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
     enabled: !!userBranchId
   })
 
+  const { data: hiddenCategories = [] } = useQuery<string[]>({
+    queryKey: ['hidden-categories', userBranchId],
+    queryFn: async () => {
+      if (!userBranchId) return []
+      try {
+        const res = await inventoryApi.getHiddenCategories(userBranchId)
+        return Array.isArray(res.data) ? res.data : []
+      } catch {
+        return []
+      }
+    },
+    enabled: !!userBranchId,
+  })
+
   const submitMutation = useMutation({
     mutationFn: (data: any) => transfersApi.create(data),
     onSuccess: () => {
@@ -64,6 +78,7 @@ export function CreateTransferModal({ onClose, onSuccess }: { onClose: () => voi
 
   const filteredInventory = inventory.filter((inv: any) => {
     if (!inv.product?.isActive) return false
+    if (inv.product?.categoryId && hiddenCategories.includes(inv.product.categoryId)) return false
     if (!search.trim()) return true
     return inv.product.name.toLowerCase().includes(search.toLowerCase())
   })
