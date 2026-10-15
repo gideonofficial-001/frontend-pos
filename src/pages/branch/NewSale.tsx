@@ -277,10 +277,10 @@ const NewSale = () => {
         <p className="text-muted-foreground">Search and tap products to add to cart</p>
       </div>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6 flex-1 min-h-0">
+      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 flex-1 min-h-0">
 
         {/* ── PRODUCTS GRID ── */}
-        <div className="lg:col-span-2 flex flex-col h-[50vh] lg:h-full bg-muted/10 rounded-xl border overflow-hidden shadow-sm">
+        <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-[50vh] lg:h-full bg-muted/10 rounded-xl border overflow-hidden shadow-sm">
           <div className="p-4 bg-card border-b flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
@@ -343,12 +343,12 @@ const NewSale = () => {
         </div>
 
         {/* ── CART ── */}
-        <div className="flex flex-col h-auto lg:h-full">
+        <div className="lg:col-span-5 xl:col-span-5 flex flex-col h-auto lg:h-full">
           <Card className="flex flex-col h-full border-primary/10 shadow-md">
             <CardHeader className="pb-3 flex-shrink-0 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-primary" />
-                Cart ({items.length})
+                <span>Cart ({items.length})</span>
               </CardTitle>
               <div className="flex items-center gap-1.5">
                 {parkedCarts.length > 0 && (
@@ -403,36 +403,36 @@ const NewSale = () => {
                   const [, lpgVariant] = item.productId.split(VARIANT_SEPARATOR)
                   const lineTotal = item.unitPrice * item.quantity - item.discount
                   return (
-                    <div key={item.productId} className="bg-card border rounded-lg shadow-sm overflow-hidden p-3 transition-colors hover:border-primary/40">
-                      {/* Top Row: Name, variant badge, and delete */}
-                      <div className="flex items-start justify-between gap-2">
+                    <div key={item.productId} className="bg-card border rounded-xl shadow-xs overflow-hidden p-3.5 sm:p-4 transition-all hover:border-primary/40 hover:shadow-sm space-y-3">
+                      {/* Top Row: Name, variant badge, line total, and delete */}
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-sm sm:text-base text-foreground leading-snug break-words">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-base sm:text-lg text-foreground leading-snug break-words">
                               {item.product.name}
                             </span>
                             {lpgVariant === 'REFILL' && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border dark:border-cyan-500/40">
+                              <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-blue-600 text-white shadow-xs tracking-wide">
                                 Refill
                               </span>
                             )}
                             {lpgVariant === 'EMPTY_SHELL' && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:border dark:border-amber-500/40">
+                              <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-amber-500 text-white shadow-xs tracking-wide">
                                 Empty Shell
                               </span>
                             )}
                             {lpgVariant === 'COMPLETE_SET' && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border dark:border-emerald-500/40">
+                              <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-emerald-600 text-white shadow-xs tracking-wide">
                                 Complete Set
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-muted-foreground font-medium">
+                            <span className="text-sm text-muted-foreground font-medium">
                               {formatCurrency(item.unitPrice)} each
                             </span>
                             {item.discount > 0 && (
-                              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                              <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
                                 -{formatCurrency(item.discount)} off
                               </span>
                             )}
@@ -440,53 +440,55 @@ const NewSale = () => {
                         </div>
 
                         {/* Line total & remove */}
-                        <div className="text-right shrink-0 flex items-center gap-2">
-                          <span className="text-sm sm:text-base font-extrabold text-foreground">
+                        <div className="text-right shrink-0 flex items-center gap-2 sm:gap-3">
+                          <span className="text-base sm:text-lg font-black text-foreground tabular-nums">
                             {formatCurrency(lineTotal)}
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-md"
+                            className="h-8 w-8 sm:h-9 sm:w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0 transition-colors"
                             title="Remove item"
                             onClick={() => removeItem(item.productId)}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
 
                       {/* Bottom Controls Row: Stepper and Discount button */}
-                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/40 gap-2">
-                        <div className="flex items-center gap-1.5 bg-muted/40 rounded-md border p-0.5">
+                      <div className="flex items-center justify-between pt-2 border-t border-border/50 gap-2">
+                        <div className="flex items-center bg-muted/60 rounded-lg border p-1 shadow-xs">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 rounded hover:bg-muted font-bold text-foreground"
+                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-background hover:shadow-xs active:scale-95 transition-all text-foreground"
                             onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                            title="Decrease quantity"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-4 h-4 stroke-[2.5]" />
                           </Button>
-                          <span className="w-8 text-center text-sm font-black text-foreground">
+                          <span className="w-9 sm:w-11 text-center text-base sm:text-lg font-black text-foreground tabular-nums">
                             {item.quantity}
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 rounded hover:bg-muted font-bold text-foreground"
+                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-background hover:shadow-xs active:scale-95 transition-all text-foreground"
                             onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            title="Increase quantity"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
                           </Button>
                         </div>
 
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`h-7 px-2.5 text-xs font-medium gap-1 rounded-md ${
+                          className={`h-8 sm:h-9 px-3 text-xs sm:text-sm font-semibold gap-1.5 rounded-lg border transition-all ${
                             item.discount > 0
-                              ? 'text-emerald-700 bg-emerald-100/70 dark:bg-emerald-950/50 dark:text-emerald-300'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              ? 'text-emerald-700 bg-emerald-100/70 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                              : 'text-muted-foreground border-border hover:bg-muted hover:text-foreground'
                           }`}
                           onClick={() => setDiscountOpenFor(discountOpenFor === item.productId ? null : item.productId)}
                         >
@@ -497,9 +499,9 @@ const NewSale = () => {
 
                       {/* Inline discount input — only shown when toggled */}
                       {discountOpenFor === item.productId && (
-                        <div className="mt-2 p-2 rounded-md bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-                          <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">Disc KES:</span>
+                        <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+                          <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="text-xs sm:text-sm text-emerald-800 dark:text-emerald-300 font-semibold shrink-0">Disc KES:</span>
                           <Input
                             type="number"
                             min={0}
@@ -507,11 +509,11 @@ const NewSale = () => {
                             placeholder="0"
                             value={item.discount || ''}
                             onChange={(e) => updateItemDiscount(item.productId, Number(e.target.value))}
-                            className="h-7 text-sm w-28 border-emerald-300 dark:border-emerald-700 bg-background focus-visible:ring-emerald-400"
+                            className="h-8 sm:h-9 text-sm w-32 border-emerald-300 dark:border-emerald-700 bg-background focus-visible:ring-emerald-400 font-bold"
                             autoFocus
                           />
-                          <span className="text-xs text-muted-foreground">
-                            Net: {formatCurrency(item.unitPrice * item.quantity - item.discount)}
+                          <span className="text-xs sm:text-sm text-muted-foreground font-medium ml-auto">
+                            Net: <span className="font-bold text-foreground">{formatCurrency(item.unitPrice * item.quantity - item.discount)}</span>
                           </span>
                         </div>
                       )}
@@ -549,20 +551,20 @@ const NewSale = () => {
                 <Separator />
 
                 {/* Totals */}
-                <div className="space-y-1.5 text-sm bg-slate-900 text-white p-4 rounded-xl shadow-inner">
-                  <div className="flex justify-between text-slate-300">
+                <div className="space-y-2 text-sm bg-slate-900 text-white p-4 sm:p-5 rounded-xl shadow-inner">
+                  <div className="flex justify-between text-slate-300 text-sm sm:text-base">
                     <span>Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
+                    <span className="font-semibold">{formatCurrency(subtotal)}</span>
                   </div>
                   {totalDiscount > 0 && (
-                    <div className="flex justify-between text-emerald-400 font-medium">
+                    <div className="flex justify-between text-emerald-400 font-semibold text-sm sm:text-base">
                       <span>Discounts</span>
                       <span>- {formatCurrency(totalDiscount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-xl font-black text-white pt-2 mt-2 border-t border-slate-700">
+                  <div className="flex justify-between text-2xl sm:text-3xl font-black text-white pt-2.5 mt-2 border-t border-slate-700/80 tracking-tight">
                     <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
+                    <span className="tabular-nums">{formatCurrency(total)}</span>
                   </div>
                 </div>
               </div>
@@ -570,7 +572,7 @@ const NewSale = () => {
 
             <CardFooter className="pt-2 flex-shrink-0">
               <Button
-                className={`w-full text-lg font-bold h-14 shadow-lg ${saleType === SaleType.WHOLESALE ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                className={`w-full text-lg sm:text-xl font-black h-14 sm:h-16 shadow-lg transition-all ${saleType === SaleType.WHOLESALE ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
                 disabled={items.length === 0 || createSaleMutation.isPending || (requiresCustomer && !selectedCustomerId)}
                 onClick={handleCheckout}
               >

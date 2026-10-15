@@ -137,6 +137,19 @@ export const inventoryApi = {
     api.get(`/inventory/hidden-categories/${branchId}`),
   setHiddenCategories: (branchId: string, categoryIds: string[]) =>
     api.post(`/inventory/hidden-categories/${branchId}`, { categoryIds }),
+  getBranchPrices: (branchId: string) =>
+    api.get(`/inventory/branch-prices/${branchId}`),
+  setBranchPrice: (
+    branchId: string,
+    data: {
+      productId: string
+      price?: number
+      emptyPrice?: number | null
+      wholesalePrice?: number
+      wholesaleEmptyPrice?: number | null
+      resetToGlobal?: boolean
+    },
+  ) => api.post(`/inventory/branch-prices/${branchId}`, data),
   delete: (id: string) => api.delete(`/inventory/${id}`),
 }
 

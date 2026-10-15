@@ -137,6 +137,7 @@ const Inventory = () => {
   })
 
   const activeBranch = branches?.find((b: any) => b.id === activeBranchId) || inventory?.[0]?.branch
+  const isHQ = activeBranch?.code?.trim().toUpperCase() === 'HQ' || !activeBranchId
 
   const adjustStockMutation = useMutation({
     mutationFn: async (data: { id: string; quantity?: number; fullCylinders?: number; reason: string }) =>
@@ -160,11 +161,43 @@ const Inventory = () => {
         wholesaleEmptyPrice: data.wholesaleEmptyPrice,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory', activeBranchId] })
+      queryClient.invalidateQueries({ queryKey: ['inventory'] })
       setIsEditPriceOpen(false)
-      toast.success('Product updated successfully')
+      toast.success('Global product price updated for all branches')
     },
-    onError: (error: any) => toast.error(error?.response?.data?.message || 'Failed to update product')
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'Failed to update global product')
+  })
+
+  const setBranchPriceMutation = useMutation({
+    mutationFn: async (data: {
+      branchId: string
+      productId: string
+      price?: number
+      emptyPrice?: number | null
+      wholesalePrice?: number
+      wholesaleEmptyPrice?: number | null
+      resetToGlobal?: boolean
+    }) =>
+      await inventoryApi.setBranchPrice(data.branchId, {
+        productId: data.productId,
+        price: data.price,
+        emptyPrice: data.emptyPrice,
+        wholesalePrice: data.wholesalePrice,
+        wholesaleEmptyPrice: data.wholesaleEmptyPrice,
+        resetToGlobal: data.resetToGlobal,
+      }),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', activeBranchId] })
+      queryClient.invalidateQueries({ queryKey: ['branch-inventory'] })
+      setIsEditPriceOpen(false)
+      toast.success(
+        vars.resetToGlobal
+          ? `Price reset to HQ Master Price for ${activeBranch?.name}`
+          : `Local price updated for ${activeBranch?.name}`
+      )
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || 'Failed to update local branch price'),
   })
 
   const deleteProductMutation = useMutation({
@@ -531,7 +564,20 @@ const Inventory = () => {
                                 </TableCell>
 
                                 <TableCell className={`font-medium ${pricingMode === 'WHOLESALE' ? 'text-purple-700' : 'text-muted-foreground'}`}>
-                                  {Number(displayPrice).toLocaleString()}
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-sm text-foreground">
+                                      {Number(displayPrice).toLocaleString()}
+                                    </span>
+                                    {item.isCustomPrice ? (
+                                      <Badge variant="secondary" className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 px-1.5 py-0">
+                                        Local
+                                      </Badge>
+                                    ) : !isHQ ? (
+                                      <span className="text-[10px] text-muted-foreground/70 font-normal">
+                                        (HQ)
+                                      </span>
+                                    ) : null}
+                                  </div>
                                   {isLpgConfig && displayEmptyPrice != null && (
                                     <span className="block text-xs text-amber-600 mt-0.5">
                                       Empty: {Number(displayEmptyPrice).toLocaleString()}
@@ -735,8 +781,42 @@ const Inventory = () => {
       {/* Edit Product Details & Pricing Dialog (Super Admin only) */}
       <Dialog open={isEditPriceOpen} onOpenChange={setIsEditPriceOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Edit Product: {selectedItem?.product?.name}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" />
+              {isHQ
+                ? 'Edit Product (Headquarters — Global Pricing)'
+                : `Edit Local Price: ${activeBranch?.name}`}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-3">
+            {!isHQ ? (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-900 dark:text-amber-300 space-y-1.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <Store className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  Branch-Specific Local Pricing
+                </p>
+                <p className="leading-relaxed">
+                  Price changes made here apply <strong>locally to {activeBranch?.name} only</strong>. Other branches and Headquarters will remain unaffected.
+                </p>
+                <div className="pt-1.5 text-[11px] text-muted-foreground flex flex-col gap-0.5 border-t border-amber-500/20">
+                  <span className="font-semibold text-foreground">HQ Global Master Price:</span>
+                  <span>
+                    Retail: KES {Number(selectedItem?.globalPrice?.price ?? selectedItem?.product?.price).toLocaleString()}
+                    {isSelectedLpg && selectedItem?.globalPrice?.emptyPrice != null && ` (Empty: KES ${Number(selectedItem.globalPrice.emptyPrice).toLocaleString()})`}
+                    {' · '}
+                    Wholesale: KES {Number(selectedItem?.globalPrice?.wholesalePrice ?? selectedItem?.product?.wholesalePrice).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2.5 text-xs text-blue-900 dark:text-blue-300">
+                <p className="font-semibold">
+                  Headquarters Mode: Adjusting prices here updates the <strong>global master price</strong> across all branches.
+                </p>
+              </div>
+            )}
+
             {/* Product Details (Name & Description) */}
             <div className="space-y-3 bg-muted/10 p-3 rounded-lg border">
               <div className="space-y-1.5">
@@ -745,20 +825,31 @@ const Inventory = () => {
                   value={editProductName}
                   onChange={(e) => setEditProductName(e.target.value)}
                   placeholder="Product Name"
+                  disabled={!isHQ}
                 />
+                {!isHQ && (
+                  <p className="text-[11px] text-muted-foreground">Product name and code are managed globally from Headquarters.</p>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description (Optional)</label>
-                <Input
-                  value={editProductDescription}
-                  onChange={(e) => setEditProductDescription(e.target.value)}
-                  placeholder="Product Description"
-                />
-              </div>
+              {isHQ && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description (Optional)</label>
+                  <Input
+                    value={editProductDescription}
+                    onChange={(e) => setEditProductDescription(e.target.value)}
+                    placeholder="Product Description"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 bg-muted/20 p-3 rounded-lg border">
-              <div className="space-y-2 col-span-2"><h4 className="text-sm font-bold text-muted-foreground uppercase">Retail Pricing</h4></div>
+              <div className="space-y-2 col-span-2">
+                <h4 className="text-sm font-bold text-muted-foreground uppercase flex items-center justify-between">
+                  <span>Retail Pricing</span>
+                  {!isHQ && <span className="text-xs font-semibold text-amber-600">Local Override</span>}
+                </h4>
+              </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium">{isSelectedLpg ? 'Refill Price' : 'Price'}</label>
                 <Input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} />
@@ -770,36 +861,83 @@ const Inventory = () => {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4 bg-purple-50/50 p-3 rounded-lg border border-purple-100">
-              <div className="space-y-2 col-span-2"><h4 className="text-sm font-bold text-purple-700 uppercase">Wholesale Pricing</h4></div>
+
+            <div className="grid grid-cols-2 gap-4 bg-purple-50/50 p-3 rounded-lg border border-purple-100 dark:bg-purple-950/20 dark:border-purple-800/40">
+              <div className="space-y-2 col-span-2">
+                <h4 className="text-sm font-bold text-purple-700 dark:text-purple-300 uppercase flex items-center justify-between">
+                  <span>Wholesale Pricing</span>
+                  {!isHQ && <span className="text-xs font-semibold text-purple-600">Local Override</span>}
+                </h4>
+              </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-purple-900">{isSelectedLpg ? 'Refill Price' : 'Price'}</label>
-                <Input type="number" className="border-purple-200" value={editWholesalePrice} onChange={(e) => setEditWholesalePrice(Number(e.target.value))} />
+                <label className="text-xs font-medium text-purple-900 dark:text-purple-300">{isSelectedLpg ? 'Refill Price' : 'Price'}</label>
+                <Input type="number" className="border-purple-200 dark:border-purple-800" value={editWholesalePrice} onChange={(e) => setEditWholesalePrice(Number(e.target.value))} />
               </div>
               {isSelectedLpg && (
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-amber-700">Empty Shell Price</label>
-                  <Input type="number" className="border-purple-200" value={editWholesaleEmptyPrice} onChange={(e) => setEditWholesaleEmptyPrice(Number(e.target.value))} />
+                  <label className="text-xs font-medium text-amber-700 dark:text-amber-400">Empty Shell Price</label>
+                  <Input type="number" className="border-purple-200 dark:border-purple-800" value={editWholesaleEmptyPrice} onChange={(e) => setEditWholesaleEmptyPrice(Number(e.target.value))} />
                 </div>
               )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditPriceOpen(false)}>Cancel</Button>
-            <Button
-              disabled={!editProductName.trim() || updatePriceMutation.isPending}
-              onClick={() => updatePriceMutation.mutate({
-                id: selectedItem.product.id,
-                name: editProductName.trim(),
-                description: editProductDescription.trim() || undefined,
-                price: editPrice,
-                emptyPrice: isSelectedLpg ? editEmptyPrice : undefined,
-                wholesalePrice: editWholesalePrice,
-                wholesaleEmptyPrice: isSelectedLpg ? editWholesaleEmptyPrice : undefined
-              })}
-            >
-              {updatePriceMutation.isPending ? 'Updating...' : 'Save Changes'}
-            </Button>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between items-center">
+            <div>
+              {!isHQ && selectedItem?.isCustomPrice && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-xs text-destructive hover:bg-destructive/10"
+                  disabled={setBranchPriceMutation.isPending}
+                  onClick={() =>
+                    setBranchPriceMutation.mutate({
+                      branchId: activeBranchId,
+                      productId: selectedItem.product.id,
+                      resetToGlobal: true,
+                    })
+                  }
+                >
+                  Reset to HQ Master Price
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsEditPriceOpen(false)}>Cancel</Button>
+              <Button
+                disabled={
+                  isHQ
+                    ? !editProductName.trim() || updatePriceMutation.isPending
+                    : setBranchPriceMutation.isPending
+                }
+                onClick={() => {
+                  if (isHQ) {
+                    updatePriceMutation.mutate({
+                      id: selectedItem.product.id,
+                      name: editProductName.trim(),
+                      description: editProductDescription.trim() || undefined,
+                      price: editPrice,
+                      emptyPrice: isSelectedLpg ? editEmptyPrice : undefined,
+                      wholesalePrice: editWholesalePrice,
+                      wholesaleEmptyPrice: isSelectedLpg ? editWholesaleEmptyPrice : undefined,
+                    })
+                  } else {
+                    setBranchPriceMutation.mutate({
+                      branchId: activeBranchId,
+                      productId: selectedItem.product.id,
+                      price: editPrice,
+                      emptyPrice: isSelectedLpg ? editEmptyPrice : undefined,
+                      wholesalePrice: editWholesalePrice,
+                      wholesaleEmptyPrice: isSelectedLpg ? editWholesaleEmptyPrice : undefined,
+                    })
+                  }
+                }}
+              >
+                {isHQ
+                  ? updatePriceMutation.isPending ? 'Updating...' : 'Save Global Changes'
+                  : setBranchPriceMutation.isPending ? 'Saving...' : 'Save Local Price'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
