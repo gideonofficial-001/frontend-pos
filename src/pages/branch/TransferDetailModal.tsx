@@ -68,12 +68,31 @@ export function TransferDetailModal({ transfer, onClose, onUpdate }: Props) {
     setCurrentTransfer(transfer);
   }, [transfer]);
 
-  const isIncoming = currentTransfer.toBranch.id === user?.branchId;
-  const isOutgoing = currentTransfer.fromBranch.id === user?.branchId;
+  const isOutgoing = user?.branchId
+    ? currentTransfer.fromBranch.id === user.branchId
+    : currentTransfer.requestedBy?.id === user?.id;
+
+  const isIncoming = user?.branchId
+    ? currentTransfer.toBranch.id === user.branchId && currentTransfer.fromBranch.id !== user.branchId
+    : currentTransfer.requestedBy?.id !== user?.id;
+
+  // Strict: Outgoing transfers can NEVER be responded to.
+  // Only the receiving branch / authorized manager can respond.
   const canRespond =
+    !isOutgoing &&
+    currentTransfer.fromBranch.id !== user?.branchId &&
+    currentTransfer.requestedBy?.id !== user?.id &&
     isIncoming &&
     (currentTransfer.status === 'PENDING' || currentTransfer.status === 'PARTIAL') &&
     (user?.role === 'BRANCH_MANAGER' || user?.role === 'SUPER_ADMIN');
+
+  // Strict: Incoming transfers can NEVER be cancelled.
+  // Only outgoing pending transfers can be cancelled by the sender.
+  const canCancel =
+    !isIncoming &&
+    currentTransfer.toBranch.id !== user?.branchId &&
+    isOutgoing &&
+    currentTransfer.status === 'PENDING';
 
   const approveItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
@@ -432,7 +451,7 @@ export function TransferDetailModal({ transfer, onClose, onUpdate }: Props) {
         </div>
 
         <DialogFooter className="gap-2">
-          {isOutgoing && currentTransfer.status === 'PENDING' && (
+          {canCancel && (
             <Button
               variant="outline"
               className="text-red-600 border-red-200 hover:bg-red-50"

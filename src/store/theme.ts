@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark' | 'jungle' | 'pink' | 'aqua' | 'cyan';
+export type Theme = 'light' | 'dark' | 'jungle' | 'pink' | 'aqua';
 
 interface ThemeState {
   theme: Theme;
@@ -20,7 +20,6 @@ export const useThemeStore = create<ThemeState>()(
           if (state.theme === 'dark') return { theme: 'jungle' };
           if (state.theme === 'jungle') return { theme: 'pink' };
           if (state.theme === 'pink') return { theme: 'aqua' };
-          if (state.theme === 'aqua') return { theme: 'cyan' };
           return { theme: 'light' };
         }),
     }),

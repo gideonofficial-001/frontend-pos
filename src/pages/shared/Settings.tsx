@@ -354,28 +354,6 @@ const Settings = () => {
               <p className="font-bold text-sm text-foreground">Oceanic Aqua</p>
               <p className="text-xs text-muted-foreground mt-0.5">Electric cyan & deep abyss shade</p>
             </button>
-
-            {/* Bright Cyan */}
-            <button
-              type="button"
-              onClick={() => setTheme('cyan')}
-              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
-                theme === 'cyan'
-                  ? 'border-cyan-500 bg-cyan-500/10 shadow-sm'
-                  : 'border-border hover:border-muted-foreground/30 bg-card'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-lg bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-400 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                  <Droplets className="w-5 h-5" />
-                </div>
-                {theme === 'cyan' && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
-                )}
-              </div>
-              <p className="font-bold text-sm text-foreground">Bright Cyan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">High-contrast dark content & vivid cyan accents</p>
-            </button>
           </div>
         </CardContent>
       </Card>

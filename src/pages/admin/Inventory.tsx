@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PackageSearch, AlertTriangle, Store, ArrowLeft, Plus, Trash2, Settings2, DollarSign, Globe, MapPin, Pin, SlidersHorizontal, Pencil, Eye, EyeOff } from 'lucide-react'
+import { PackageSearch, AlertTriangle, Store, ArrowLeft, Plus, Trash2, Settings2, DollarSign, Globe, MapPin, Pin, SlidersHorizontal, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ── LOCAL ZUSTAND STORE FOR CATEGORY PINNING ─────────────────────────────────
@@ -74,7 +74,6 @@ const Inventory = () => {
     price: 0, emptyPrice: 0, wholesalePrice: 0, wholesaleEmptyPrice: 0, minStockLevel: 10
   })
 
-  const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ inventoryId: string; productId: string; name: string; isGlobal: boolean } | null>(null)
 
   const { data: branches, isLoading: isLoadingBranches } = useQuery({
@@ -96,37 +95,6 @@ const Inventory = () => {
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => (await productsApi.getCategories()).data,
-  })
-
-  const { data: hiddenCategories = [] } = useQuery<string[]>({
-    queryKey: ['hidden-categories', activeBranchId],
-    queryFn: async () => {
-      if (!activeBranchId) return []
-      try {
-        const res = await inventoryApi.getHiddenCategories(activeBranchId)
-        return Array.isArray(res.data) ? res.data : []
-      } catch {
-        return []
-      }
-    },
-    enabled: !!activeBranchId,
-  })
-
-  const toggleHiddenCategoryMutation = useMutation({
-    mutationFn: async ({ categoryId, hide }: { categoryId: string; hide: boolean }) => {
-      if (!activeBranchId) throw new Error('No branch selected')
-      const updated = hide
-        ? Array.from(new Set([...hiddenCategories, categoryId]))
-        : hiddenCategories.filter(id => id !== categoryId)
-      return (await inventoryApi.setHiddenCategories(activeBranchId, updated)).data
-    },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['hidden-categories', activeBranchId] })
-      toast.success(vars.hide ? 'Category hidden for this branch' : 'Category unhidden for this branch')
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to update category visibility')
-    }
   })
 
   const activeBranch = branches?.find((b: any) => b.id === activeBranchId) || inventory?.[0]?.branch
@@ -239,13 +207,7 @@ const Inventory = () => {
     })
 
     return mapped
-      .filter((cat: any) => {
-        if (cat.items.length === 0) return false
-        if (user?.role === UserRole.BRANCH_MANAGER && hiddenCategories.includes(cat.id)) {
-          return false
-        }
-        return true
-      })
+      .filter((cat: any) => cat.items.length > 0) // Hide empty categories
       .sort((a: any, b: any) => { // Sort: Pinned first, then alphabetical
         const aPinned = pinnedCategories.includes(a.id)
         const bPinned = pinnedCategories.includes(b.id)
@@ -253,7 +215,7 @@ const Inventory = () => {
         if (!aPinned && bPinned) return 1
         return a.name.localeCompare(b.name)
       })
-  }, [categories, inventory, search, pinnedCategories, hiddenCategories, user?.role])
+  }, [categories, inventory, search, pinnedCategories])
 
   const isSelectedLpg = !!(
     selectedItem?.product?.isLpg ||
@@ -323,11 +285,6 @@ const Inventory = () => {
           )}
           {user?.role === UserRole.SUPER_ADMIN && (
             <>
-              {activeBranchId && (
-                <Button variant="outline" onClick={() => setIsVisibilityModalOpen(true)}>
-                  <EyeOff className="w-4 h-4 mr-2" /> Category Visibility
-                </Button>
-              )}
               <Button variant="outline" onClick={() => setIsAddCategoryOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" /> Add Category
               </Button>
@@ -416,48 +373,18 @@ const Inventory = () => {
                       >
                         <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
                       </Button>
-
-                      {hiddenCategories.includes(category.id) && (
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                          Hidden for this branch
-                        </Badge>
-                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {user?.role === UserRole.SUPER_ADMIN && activeBranchId && (
-                        <Button
-                          variant={hiddenCategories.includes(category.id) ? "default" : "outline"}
-                          size="sm"
-                          className="h-8 text-xs font-semibold"
-                          onClick={() => toggleHiddenCategoryMutation.mutate({
-                            categoryId: category.id,
-                            hide: !hiddenCategories.includes(category.id)
-                          })}
-                          disabled={toggleHiddenCategoryMutation.isPending}
-                        >
-                          {hiddenCategories.includes(category.id) ? (
-                            <>
-                              <Eye className="w-3.5 h-3.5 mr-1.5" /> Unhide for Branch
-                            </>
-                          ) : (
-                            <>
-                              <EyeOff className="w-3.5 h-3.5 mr-1.5" /> Hide for Branch
-                            </>
-                          )}
-                        </Button>
-                      )}
-                      {user?.role === UserRole.SUPER_ADMIN && (
-                        <Button
-                          variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 h-8"
-                          onClick={() => {
-                            if (confirm(`Delete the "${category.name}" category?\n\nProducts inside will be unlinked but not deleted.`))
-                              deleteCategoryMutation.mutate(category.id)
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" /> Delete
-                        </Button>
-                      )}
-                    </div>
+                    {user?.role === UserRole.SUPER_ADMIN && (
+                      <Button
+                        variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 h-8"
+                        onClick={() => {
+                          if (confirm(`Delete the "${category.name}" category?\n\nProducts inside will be unlinked but not deleted.`))
+                            deleteCategoryMutation.mutate(category.id)
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" /> Delete
+                      </Button>
+                    )}
                   </div>
 
                   {/* Table */}
@@ -894,73 +821,6 @@ const Inventory = () => {
             )}>
               Create Category
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Category Visibility Dialog */}
-      <Dialog open={isVisibilityModalOpen} onOpenChange={setIsVisibilityModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <EyeOff className="w-5 h-5 text-primary" />
-              Branch Category Visibility
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">
-              Hide or unhide product categories for <strong>{activeBranch?.name || 'this branch'}</strong>.
-              Hidden categories will not appear during new sales or stock checks for this branch.
-            </p>
-            <div className="max-h-72 overflow-y-auto space-y-2 border rounded-lg p-3">
-              {categories?.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No categories created yet.</p>
-              ) : (
-                categories?.map((cat: any) => {
-                  const isHidden = hiddenCategories.includes(cat.id)
-                  return (
-                    <div
-                      key={cat.id}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                        isHidden ? 'bg-amber-500/10 border-amber-500/30' : 'bg-card border-border'
-                      }`}
-                    >
-                      <div className="space-y-0.5">
-                        <p className="font-semibold text-sm">{cat.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {isHidden ? 'Hidden from this branch' : 'Visible for this branch'}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant={isHidden ? 'default' : 'outline'}
-                        className="h-8 text-xs font-semibold"
-                        onClick={() => toggleHiddenCategoryMutation.mutate({
-                          categoryId: cat.id,
-                          hide: !isHidden
-                        })}
-                        disabled={toggleHiddenCategoryMutation.isPending}
-                      >
-                        {isHidden ? (
-                          <>
-                            <Eye className="w-3.5 h-3.5 mr-1.5" />
-                            Unhide
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="w-3.5 h-3.5 mr-1.5" />
-                            Hide
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsVisibilityModalOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

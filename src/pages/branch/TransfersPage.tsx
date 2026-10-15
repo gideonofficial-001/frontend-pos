@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api, { branchesApi } from '@/api';
 import { useAuthStore } from '@/store';
+import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -84,20 +85,18 @@ export default function TransfersPage() {
     },
   });
 
-  const isIncoming = (t: Transfer) => {
-    if (user?.role === 'SUPER_ADMIN') {
-      if (!user?.branchId) return true;
-      return t.toBranch.id === user.branchId || t.fromBranch.id !== user.branchId;
-    }
-    return t.toBranch.id === user?.branchId;
-  };
-
   const isOutgoing = (t: Transfer) => {
-    if (user?.role === 'SUPER_ADMIN') {
-      if (!user?.branchId) return true;
+    if (user?.branchId) {
       return t.fromBranch.id === user.branchId;
     }
-    return t.fromBranch.id === user?.branchId;
+    return t.requestedBy?.id === user?.id;
+  };
+
+  const isIncoming = (t: Transfer) => {
+    if (user?.branchId) {
+      return t.toBranch.id === user.branchId && t.fromBranch.id !== user.branchId;
+    }
+    return t.requestedBy?.id !== user?.id;
   };
 
   const isActive   = (t: Transfer) => t.status === 'PENDING' || t.status === 'PARTIAL';
@@ -165,14 +164,42 @@ export default function TransfersPage() {
   }, [filteredHistory, historyPage]);
 
   const canRespond = (t: Transfer) => {
+    // Strictly ONLY incoming transfers can be responded to.
+    // Under no circumstances can anyone (including admin) respond to an outgoing transfer.
+    if (isOutgoing(t) || t.fromBranch.id === user?.branchId || t.requestedBy?.id === user?.id) {
+      return false;
+    }
     const isManager = user?.role === 'BRANCH_MANAGER' || user?.role === 'SUPER_ADMIN';
-    const canManageDest = user?.role === 'SUPER_ADMIN' || t.toBranch.id === user?.branchId;
-    return canManageDest && isActive(t) && isManager;
+    return isIncoming(t) && isActive(t) && isManager;
   };
 
-  const canCancel = (t: Transfer) =>
-    (isOutgoing(t) || user?.role === 'SUPER_ADMIN') && t.status === 'PENDING' &&
-    (t.requestedBy.id === user?.id || user?.role === 'SUPER_ADMIN');
+  const canCancel = (t: Transfer) => {
+    // Strictly ONLY outgoing transfers can be cancelled.
+    // Under no circumstances can anyone cancel an incoming transfer.
+    if (isIncoming(t) || t.toBranch.id === user?.branchId) {
+      return false;
+    }
+    const isSender = isOutgoing(t) || t.fromBranch.id === user?.branchId || t.requestedBy?.id === user?.id;
+    return isSender && t.status === 'PENDING';
+  };
+
+  const cancelMutation = useMutation({
+    mutationFn: (transferId: string) => api.patch(`/transfers/${transferId}/cancel`),
+    onSuccess: () => {
+      toast.success('Transfer cancelled successfully');
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error('Failed to cancel transfer', {
+        description: err.response?.data?.message || err.message,
+      });
+    },
+  });
+
+  const handleCancelDirect = async (transferId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this transfer?')) return;
+    await cancelMutation.mutateAsync(transferId);
+  };
 
   // 🚀 ADDED: Helper to translate backend LPG data into beautiful labels
   const getVariantLabel = (item: TransferItem) => {
@@ -238,8 +265,10 @@ export default function TransfersPage() {
               {canCancel(transfer) && (
                 <Button size="sm" variant="outline"
                   className="text-red-600 hover:text-red-700 border-red-200"
-                  onClick={() => setSelectedTransfer(transfer)}>
-                  Cancel
+                  onClick={() => handleCancelDirect(transfer.id)}
+                  disabled={cancelMutation.isPending}
+                >
+                  {cancelMutation.isPending ? 'Cancelling...' : 'Cancel'}
                 </Button>
               )}
             </div>
