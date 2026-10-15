@@ -112,7 +112,7 @@ function App() {
 
   useEffect(() => {
     const root = window.document.documentElement
-    root.classList.remove('dark', 'theme-jungle', 'theme-pink', 'theme-aqua')
+    root.classList.remove('dark', 'theme-jungle', 'theme-pink', 'theme-aqua', 'theme-cyan')
     if (theme === 'dark') {
       root.classList.add('dark')
     } else if (theme === 'jungle') {
@@ -121,6 +121,8 @@ function App() {
       root.classList.add('dark', 'theme-pink')
     } else if (theme === 'aqua') {
       root.classList.add('dark', 'theme-aqua')
+    } else if (theme === 'cyan') {
+      root.classList.add('theme-cyan')
     }
   }, [theme])
 
@@ -157,7 +159,7 @@ function App() {
           <Route path="/customers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Customers /></ProtectedRoute>} />
           <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Invoices /></ProtectedRoute>} />
           <Route path="/admin/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><SalesHistory /></ProtectedRoute>} />
-          <Route path="/admin/returns" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><AdminReturns /></ProtectedRoute>} />
+          <Route path="/admin/returns" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><AdminReturns /></ProtectedRoute>} />
 
           <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={[UserRole.OVERALL_MANAGER]}><ManagerDashboard /></ProtectedRoute>} />
           <Route path="/manager/reports" element={<ProtectedRoute allowedRoles={[UserRole.OVERALL_MANAGER]}><Reports /></ProtectedRoute>} />

@@ -133,6 +133,10 @@ export const inventoryApi = {
   }) => api.get('/inventory/adjustments', { params }),
   getAvailableCylinders: (branchId: string, productId: string, status?: string) =>
     api.get('/inventory/cylinders/available', { params: { branchId, productId, status } }),
+  getHiddenCategories: (branchId: string) =>
+    api.get(`/inventory/hidden-categories/${branchId}`),
+  setHiddenCategories: (branchId: string, categoryIds: string[]) =>
+    api.post(`/inventory/hidden-categories/${branchId}`, { categoryIds }),
   delete: (id: string) => api.delete(`/inventory/${id}`),
 }
 

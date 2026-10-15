@@ -11,9 +11,20 @@ export function formatCurrency(amount: number | string | null | undefined): stri
   return `KES ${num.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+export function getNairobiDateString(date: string | Date = new Date()): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Nairobi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '-'
   return new Date(date).toLocaleDateString('en-KE', {
+    timeZone: 'Africa/Nairobi',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -23,6 +34,7 @@ export function formatDate(date: string | Date | null | undefined): string {
 export function formatDateTime(date: string | Date | null | undefined): string {
   if (!date) return '-'
   return new Date(date).toLocaleString('en-KE', {
+    timeZone: 'Africa/Nairobi',
     year: 'numeric',
     month: 'short',
     day: 'numeric',

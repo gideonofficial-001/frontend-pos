@@ -9,13 +9,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, getNairobiDateString } from '@/lib/utils'
 import { Calendar, Search, Printer, Store, FileDown, Phone, User, ChevronRight, Package, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 const getBusinessDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toISOString().split('T')[0]
+  return getNairobiDateString(dateString)
 }
 
 const SalesHistory = () => {
@@ -24,7 +23,7 @@ const SalesHistory = () => {
 
   const [search, setSearch] = useState('')
   const [view, setView] = useState('all')
-  const todayBusinessDate = getBusinessDate(new Date().toISOString())
+  const todayBusinessDate = getNairobiDateString()
   const [dateFilter, setDateFilter] = useState(todayBusinessDate)
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all')
   const [showEndOfMonthPrompt, setShowEndOfMonthPrompt] = useState(false)
