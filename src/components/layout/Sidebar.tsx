@@ -146,8 +146,8 @@ const Sidebar = () => {
               ? 'Oceanic Aqua'
               : theme === 'cyan'
               ? 'Bright Cyan'
-              : theme === 'sleek-tech'
-              ? 'Sleek Tech'
+              : theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech'
+              ? 'Obsidian Sleek'
               : theme === 'dark'
               ? 'Dark Mode'
               : 'Light Mode'
@@ -161,7 +161,7 @@ const Sidebar = () => {
             <Droplets className="w-5 h-5 shrink-0 text-cyan-400" />
           ) : theme === 'cyan' ? (
             <Droplets className="w-5 h-5 shrink-0 text-cyan-500" />
-          ) : theme === 'sleek-tech' ? (
+          ) : theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech' ? (
             <Cpu className="w-5 h-5 shrink-0 text-sky-400" />
           ) : theme === 'dark' ? (
             <Moon className="w-5 h-5 shrink-0 text-indigo-400" />
@@ -178,8 +178,8 @@ const Sidebar = () => {
                 ? 'Oceanic Aqua'
                 : theme === 'cyan'
                 ? 'Bright Cyan'
-                : theme === 'sleek-tech'
-                ? 'Sleek Tech'
+                : theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech'
+                ? 'Obsidian Sleek'
                 : theme === 'dark'
                 ? 'Dark Mode'
                 : 'Light Mode'}

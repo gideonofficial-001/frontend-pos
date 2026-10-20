@@ -211,7 +211,73 @@
     border-color: rgba(6, 182, 212, 0.45) !important;
   }
 
-  /* Subtle sky outline in sleek-tech theme */
+  /* =========================================================================
+     Obsidian Sleek Theme: Glassmorphic Surfaces & Glowing Neon Borders
+     ========================================================================= */
+  .theme-sleek,
+  .theme-sleek body {
+    background: radial-gradient(circle at 50% 0%, #0f172a 0%, #020617 75%) fixed !important;
+  }
+
+  .theme-sleek .min-h-screen.bg-background,
+  .theme-sleek .min-h-screen.bg-gradient-to-br {
+    background: transparent !important;
+  }
+
+  /* Glowing Glass Card Effect */
+  .theme-sleek .bg-card,
+  .theme-sleek .card {
+    background: rgba(15, 23, 42, 0.72) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(56, 189, 248, 0.35) !important;
+    box-shadow:
+      0 0 16px rgba(56, 189, 248, 0.15),
+      0 12px 30px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(56, 189, 248, 0.15) !important;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
+  }
+
+  .theme-sleek .bg-card:hover,
+  .theme-sleek .card:hover {
+    border-color: rgba(56, 189, 248, 0.65) !important;
+    box-shadow:
+      0 0 25px rgba(56, 189, 248, 0.3),
+      0 18px 42px rgba(0, 0, 0, 0.75),
+      inset 0 0 0 1px rgba(56, 189, 248, 0.3) !important;
+  }
+
+  /* Glowing modal/dialog containers */
+  .theme-sleek [role="dialog"],
+  .theme-sleek .sheet-content {
+    background: rgba(15, 23, 42, 0.88) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    border: 1px solid rgba(56, 189, 248, 0.45) !important;
+    box-shadow:
+      0 0 32px rgba(56, 189, 248, 0.25),
+      0 25px 60px rgba(0, 0, 0, 0.85),
+      inset 0 0 0 1px rgba(56, 189, 248, 0.25) !important;
+  }
+
+  /* Glass Sidebar & Header */
+  .theme-sleek aside {
+    background: rgba(8, 12, 22, 0.88) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-right: 1px solid rgba(56, 189, 248, 0.2) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .theme-sleek header {
+    background: rgba(10, 15, 28, 0.82) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Subtle sky outline in obsidian-sleek theme */
   .theme-sleek .border-yellow-200,
   .theme-sleek .border-yellow-300,
   .theme-sleek .border-yellow-400,
@@ -272,4 +338,36 @@
 
 .theme-sleek ::-webkit-scrollbar-thumb:hover {
   background: hsl(199 90% 45% / 0.6);
+}
+
+/* Obsidian Sleek Particle & Ambient Glow Keyframes */
+@keyframes obsidianAmbientFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-25px); }
+}
+
+@keyframes obsidianFloatUp {
+  0% {
+    transform: translateY(105vh) scale(0.7);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-10vh) scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes obsidianDrift {
+  0% {
+    margin-left: -12px;
+  }
+  100% {
+    margin-left: 12px;
+  }
 }

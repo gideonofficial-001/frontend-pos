@@ -377,26 +377,26 @@ const Settings = () => {
               <p className="text-xs text-muted-foreground mt-0.5">High-contrast dark content & vivid cyan accents</p>
             </button>
 
-            {/* Sleek Tech */}
+            {/* Obsidian Sleek */}
             <button
               type="button"
-              onClick={() => setTheme('sleek-tech')}
+              onClick={() => setTheme('obsidian-sleek')}
               className={`p-4 rounded-xl border-2 text-left transition-all relative ${
-                theme === 'sleek-tech'
-                  ? 'border-sky-400 bg-sky-950/30 shadow-sm shadow-sky-500/10'
+                theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech'
+                  ? 'border-sky-400 bg-sky-950/40 shadow-lg shadow-sky-500/20'
                   : 'border-border hover:border-muted-foreground/30 bg-card'
               }`}
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-lg bg-slate-900 border border-sky-400/40 flex items-center justify-center text-sky-400">
+                <div className="w-9 h-9 rounded-lg bg-slate-900 border border-sky-400/50 flex items-center justify-center text-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)]">
                   <Cpu className="w-5 h-5" />
                 </div>
-                {theme === 'sleek-tech' && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                {(theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech') && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,1)]" />
                 )}
               </div>
-              <p className="font-bold text-sm text-foreground">Sleek Tech</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Obsidian slate with neon sky & cyan glow</p>
+              <p className="font-bold text-sm text-foreground">Obsidian Sleek</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Obsidian glass, glowing cyan borders & floating particles</p>
             </button>
           </div>
         </CardContent>

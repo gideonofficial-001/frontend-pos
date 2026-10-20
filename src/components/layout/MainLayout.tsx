@@ -33,7 +33,7 @@ const MainLayout = () => {
       <Sidebar />
       <div className={`transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <Header />
-        <main className="p-4 lg:p-6 pt-20 lg:pt-24">
+        <main className="relative z-10 p-4 lg:p-6 pt-20 lg:pt-24">
           <Outlet />
         </main>
       </div>

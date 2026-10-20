@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark' | 'jungle' | 'pink' | 'aqua' | 'cyan' | 'sleek-tech';
+export type Theme = 'light' | 'dark' | 'jungle' | 'pink' | 'aqua' | 'cyan' | 'obsidian-sleek' | 'sleek-tech';
 
 interface ThemeState {
   theme: Theme;
@@ -13,7 +13,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       theme: 'light',
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme) => set({ theme: (theme as string) === 'sleek-tech' ? 'obsidian-sleek' : theme }),
       toggleTheme: () =>
         set((state) => {
           if (state.theme === 'light') return { theme: 'dark' };
@@ -21,7 +21,7 @@ export const useThemeStore = create<ThemeState>()(
           if (state.theme === 'jungle') return { theme: 'pink' };
           if (state.theme === 'pink') return { theme: 'aqua' };
           if (state.theme === 'aqua') return { theme: 'cyan' };
-          if (state.theme === 'cyan') return { theme: 'sleek-tech' };
+          if (state.theme === 'cyan') return { theme: 'obsidian-sleek' };
           return { theme: 'light' };
         }),
     }),

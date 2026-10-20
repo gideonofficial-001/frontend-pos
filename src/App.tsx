@@ -5,6 +5,7 @@ import { useThemeStore } from '@/store/theme'
 import { UserRole } from '@/types'
 import { SplashScreen } from '@/components/SplashScreen'
 import { NetworkStatus } from '@/components/NetworkStatus'
+import { ObsidianParticles } from '@/components/ObsidianParticles'
 
 // Layouts
 import MainLayout from '@/components/layout/MainLayout'
@@ -123,7 +124,7 @@ function App() {
       root.classList.add('dark', 'theme-aqua')
     } else if (theme === 'cyan') {
       root.classList.add('theme-cyan')
-    } else if (theme === 'sleek-tech') {
+    } else if (theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech') {
       root.classList.add('dark', 'theme-sleek')
     }
   }, [theme])
@@ -135,6 +136,7 @@ function App() {
   return (
     <>
       <NetworkStatus />
+      {(theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech') && <ObsidianParticles />}
 
       <Routes>
         <Route element={<AuthLayout />}>
