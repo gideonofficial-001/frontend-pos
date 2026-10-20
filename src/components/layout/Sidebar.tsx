@@ -8,7 +8,7 @@ import {
   ShoppingCart, FileText, RotateCcw, History, BarChart3,
   ClipboardList, Settings, LogOut, Bell, ArrowLeftRight,
   Receipt, ChevronLeft, ChevronRight, X, Menu, Smartphone,
-  Sun, Moon, Sparkles, Heart, Droplets, SlidersHorizontal, Printer
+  Sun, Moon, Sparkles, Heart, Droplets, SlidersHorizontal, Printer, Cpu
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -146,6 +146,8 @@ const Sidebar = () => {
               ? 'Oceanic Aqua'
               : theme === 'cyan'
               ? 'Bright Cyan'
+              : theme === 'sleek-tech'
+              ? 'Sleek Tech'
               : theme === 'dark'
               ? 'Dark Mode'
               : 'Light Mode'
@@ -159,6 +161,8 @@ const Sidebar = () => {
             <Droplets className="w-5 h-5 shrink-0 text-cyan-400" />
           ) : theme === 'cyan' ? (
             <Droplets className="w-5 h-5 shrink-0 text-cyan-500" />
+          ) : theme === 'sleek-tech' ? (
+            <Cpu className="w-5 h-5 shrink-0 text-sky-400" />
           ) : theme === 'dark' ? (
             <Moon className="w-5 h-5 shrink-0 text-indigo-400" />
           ) : (
@@ -174,6 +178,8 @@ const Sidebar = () => {
                 ? 'Oceanic Aqua'
                 : theme === 'cyan'
                 ? 'Bright Cyan'
+                : theme === 'sleek-tech'
+                ? 'Sleek Tech'
                 : theme === 'dark'
                 ? 'Dark Mode'
                 : 'Light Mode'}

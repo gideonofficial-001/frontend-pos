@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets, Printer, SlidersHorizontal } from 'lucide-react'
+import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets, Printer, SlidersHorizontal, Cpu } from 'lucide-react'
 
 const Settings = () => {
   const { user, token, setAuth, clearAuth } = useAuthStore()
@@ -244,7 +244,7 @@ const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {/* Light Mode */}
             <button
               type="button"
@@ -375,6 +375,28 @@ const Settings = () => {
               </div>
               <p className="font-bold text-sm text-foreground">Bright Cyan</p>
               <p className="text-xs text-muted-foreground mt-0.5">High-contrast dark content & vivid cyan accents</p>
+            </button>
+
+            {/* Sleek Tech */}
+            <button
+              type="button"
+              onClick={() => setTheme('sleek-tech')}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                theme === 'sleek-tech'
+                  ? 'border-sky-400 bg-sky-950/30 shadow-sm shadow-sky-500/10'
+                  : 'border-border hover:border-muted-foreground/30 bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-lg bg-slate-900 border border-sky-400/40 flex items-center justify-center text-sky-400">
+                  <Cpu className="w-5 h-5" />
+                </div>
+                {theme === 'sleek-tech' && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-foreground">Sleek Tech</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Obsidian slate with neon sky & cyan glow</p>
             </button>
           </div>
         </CardContent>

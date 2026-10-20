@@ -112,7 +112,7 @@ function App() {
 
   useEffect(() => {
     const root = window.document.documentElement
-    root.classList.remove('dark', 'theme-jungle', 'theme-pink', 'theme-aqua', 'theme-cyan')
+    root.classList.remove('dark', 'theme-jungle', 'theme-pink', 'theme-aqua', 'theme-cyan', 'theme-sleek')
     if (theme === 'dark') {
       root.classList.add('dark')
     } else if (theme === 'jungle') {
@@ -123,6 +123,8 @@ function App() {
       root.classList.add('dark', 'theme-aqua')
     } else if (theme === 'cyan') {
       root.classList.add('theme-cyan')
+    } else if (theme === 'sleek-tech') {
+      root.classList.add('dark', 'theme-sleek')
     }
   }, [theme])
 
