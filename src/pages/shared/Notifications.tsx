@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import {
   Bell, CheckCircle, Smartphone, RotateCcw, Receipt, Check,
   Package, Building2, Clock, MapPin, Copy, Mail, MailX,
-  ShieldCheck, Trash2, ArrowRightLeft, KeyRound,
+  ShieldCheck, Trash2, ArrowRightLeft,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -169,13 +169,9 @@ const Notifications = () => {
   })
 
   const { data: pendingReturns } = useQuery({
-    queryKey: ['pending-returns', user?.branchId],
+    queryKey: ['pending-returns'],
     queryFn: async () => {
-      const params: any = { status: 'PENDING' }
-      if (user?.branchId && user?.role !== UserRole.SUPER_ADMIN) {
-        params.branchId = user.branchId
-      }
-      const response = await returnsApi.getAll(params)
+      const response = await returnsApi.getAll({ status: 'PENDING' })
       return response.data
     },
     enabled: isAdmin || isManager,
@@ -578,8 +574,8 @@ const Notifications = () => {
                             disabled={approveDeviceMutation.isPending}
                             onClick={() => approveDeviceMutation.mutate(device.id)}
                           >
-                            <KeyRound className="w-4 h-4 mr-1" />
-                            {approveDeviceMutation.isPending ? 'Generating Code…' : 'Generate Code'}
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            {approveDeviceMutation.isPending ? 'Approving…' : 'Re-generate Code'}
                           </Button>
                         </div>
 
@@ -601,7 +597,7 @@ const Notifications = () => {
                         </div>
 
                         <p className="text-xs text-muted-foreground italic">
-                          Click "Generate Code" to create an authorization OTP for this device. The user must key it in to gain access.
+                          A code was sent in the notification. Click "Re-generate Code" only if you need a fresh one.
                         </p>
                       </CardContent>
                     </Card>

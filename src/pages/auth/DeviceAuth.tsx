@@ -18,10 +18,11 @@ const DeviceAuth = () => {
 
   const requestId = localStorage.getItem('deviceRequestId') || ''
 
-  // 1. Edge Case: Boot them back to login if they shouldn't be here (silent redirect)
+  // 1. Edge Case: Boot them back to login if they shouldn't be here
   useEffect(() => {
     if (!requestId) {
-      navigate('/login', { replace: true })
+      toast.error('No pending authorization found. Please log in again.')
+      navigate('/login')
     }
   }, [requestId, navigate])
 
@@ -31,18 +32,32 @@ const DeviceAuth = () => {
       return response.data
     },
     onSuccess: (data) => {
-      if (data?.user && data?.access_token) {
-        setAuth(data.user, data.access_token)
-      }
+      setAuth(data.user, data.access_token)
       localStorage.removeItem('pendingAuthEmail')
       localStorage.removeItem('deviceRequestId')
-      toast.success('Success! Device approved, back to login.')
-      navigate('/login')
+      toast.success('Device authorized successfully!')
+
+      if (data.user.role !== 'SUPER_ADMIN' && !data.user.branchId) {
+        navigate('/unassigned')
+        return
+      }
+
+      switch (data.user.role) {
+        case 'SUPER_ADMIN':
+          navigate('/admin/dashboard')
+          break
+        case 'OVERALL_MANAGER':
+          navigate('/manager/dashboard')
+          break
+        case 'BRANCH_MANAGER':
+          navigate('/branch/dashboard')
+          break
+        default:
+          navigate('/')
+      }
     },
     onError: (error: any) => {
-      const msg =
-        error.response?.data?.message ||
-        'Invalid or expired authorization code. Please request a new code from admin.'
+      const msg = error.response?.data?.message || 'Invalid authorization code'
       setError(msg)
       toast.error(msg)
     },
