@@ -21,6 +21,7 @@ import {
   Building2,
   Clock,
   CheckCircle2,
+  KeyRound,
   ShieldCheck,
   ShieldOff,
   Copy,
@@ -230,8 +231,8 @@ export default function AdminDevices() {
                           disabled={approveMutation.isPending}
                           onClick={() => approveMutation.mutate(device.id)}
                         >
-                          <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                          {approveMutation.isPending ? 'Approving…' : 'Approve'}
+                          <KeyRound className="w-4 h-4 mr-1.5" />
+                          {approveMutation.isPending ? 'Generating Code…' : 'Generate Code'}
                         </Button>
                       )}
                       {isApproved && (
@@ -347,16 +348,15 @@ export default function AdminDevices() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-green-600" /> Device Approved
+              <KeyRound className="w-5 h-5 text-primary" /> Authorization Code Generated
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-1">
             <p className="text-sm text-muted-foreground">
-              Share this code with{' '}
+              Share this 6-digit code with{' '}
               <span className="font-semibold text-foreground">{approvedDevice?.userName}</span>{' '}
-              directly (WhatsApp, call, or in-person). They need to enter it on the
-              Device Authorization screen.
+              directly. They must enter this code on the Device Authorization screen to verify their device and access the system.
             </p>
 
             {/* Email status */}

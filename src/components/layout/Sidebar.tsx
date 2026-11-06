@@ -79,6 +79,7 @@ const Sidebar = () => {
       items.push(
         { path: '/branch/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/stock-adjustments', icon: SlidersHorizontal, label: 'Stock Adjustments' },
         { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
         { path: '/branch/new-sale', icon: ShoppingCart, label: 'New Sale' },
         { path: '/branch/invoices', icon: FileText, label: 'Invoices' },

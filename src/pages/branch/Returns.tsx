@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
 import { RotateCcw, Search, Package } from 'lucide-react'
+import { useAuthStore } from '@/store'
 
 const ReturnsPage = () => {
+  const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [saleCode, setSaleCode] = useState('')
@@ -19,9 +21,9 @@ const ReturnsPage = () => {
   const [reason, setReason] = useState('')
 
   const { data: returns } = useQuery({
-    queryKey: ['returns'],
+    queryKey: ['returns', user?.branchId],
     queryFn: async () => {
-      const response = await returnsApi.getAll()
+      const response = await returnsApi.getAll(user?.branchId ? { branchId: user.branchId } : undefined)
       return response.data
     },
   })
