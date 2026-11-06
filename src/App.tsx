@@ -159,7 +159,7 @@ function App() {
 
           {/* Admin & Manager Routes */}
           <Route path="/inventory" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><Inventory /></ProtectedRoute>} />
-          <Route path="/stock-adjustments" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><StockAdjustments /></ProtectedRoute>} />
+          <Route path="/stock-adjustments" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><StockAdjustments /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Customers /></ProtectedRoute>} />
           <Route path="/admin/invoices" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><Invoices /></ProtectedRoute>} />
           <Route path="/admin/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><SalesHistory /></ProtectedRoute>} />
@@ -176,7 +176,9 @@ function App() {
           <Route path="/branch/sales-history" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><SalesHistory /></ProtectedRoute>} />
           <Route path="/branch/expenses" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]}><Expenses /></ProtectedRoute>} />
           <Route path="/branch/transfers" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><TransfersPage /></ProtectedRoute>} />
+          <Route path="/branch/reports" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><Reports /></ProtectedRoute>} />
           <Route path="/admin/transfers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><TransfersPage /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><Reports /></ProtectedRoute>} />
 
           {/* Shared Routes */}
           <Route path="/closing-stock" element={<ProtectedRoute><Closingstock /></ProtectedRoute>} />

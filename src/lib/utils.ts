@@ -66,14 +66,34 @@ export function generateSaleCode(): string {
 }
 
 export function generateDeviceFingerprint(): string {
+  let deviceUuid = ''
+  try {
+    deviceUuid = localStorage.getItem('pos_device_uuid') || ''
+    if (!deviceUuid) {
+      deviceUuid =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'pos-dev-' + Math.random().toString(36).substring(2, 12) + '-' + Date.now().toString(36)
+      localStorage.setItem('pos_device_uuid', deviceUuid)
+    }
+  } catch {
+    deviceUuid = 'pos-dev-' + Math.random().toString(36).substring(2, 10)
+  }
+
   const nav = window.navigator
   const screen = window.screen
   const fingerprint = [
+    deviceUuid,
     nav.userAgent,
     screen.width,
     screen.height,
     nav.language,
     new Date().getTimezoneOffset(),
   ].join('|')
-  return btoa(fingerprint).slice(0, 32)
+
+  try {
+    return btoa(unescape(encodeURIComponent(fingerprint))).slice(0, 48)
+  } catch {
+    return btoa(fingerprint.slice(0, 64)).slice(0, 48)
+  }
 }

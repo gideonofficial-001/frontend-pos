@@ -28,18 +28,35 @@ import {
   ArrowUpRight,
   PackageSearch
 } from 'lucide-react'
-import { StockAdjustmentLog } from '@/types'
+import { StockAdjustmentLog, UserRole } from '@/types'
+import { useAuthStore } from '@/store'
 
 const ITEMS_PER_PAGE = 15
 
 export default function StockAdjustments() {
+  const { user } = useAuthStore()
+  const isBranchScoped =
+    user?.role === UserRole.BRANCH_MANAGER ||
+    (Boolean(user?.branchId) &&
+      user?.role !== UserRole.SUPER_ADMIN &&
+      user?.role !== UserRole.OVERALL_MANAGER)
+
   const [search, setSearch] = useState('')
-  const [selectedBranch, setSelectedBranch] = useState('all')
+  const [selectedBranch, setSelectedBranch] = useState(
+    isBranchScoped && user?.branchId ? user.branchId : 'all',
+  )
   const [selectedType, setSelectedType] = useState<'ALL' | 'LPG' | 'GENERAL'>('ALL')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedRecord, setSelectedRecord] = useState<StockAdjustmentLog | null>(null)
+
+  // Keep branch state aligned with branch-scoped user
+  useEffect(() => {
+    if (isBranchScoped && user?.branchId && selectedBranch !== user.branchId) {
+      setSelectedBranch(user.branchId)
+    }
+  }, [isBranchScoped, user?.branchId])
 
   // Fetch branches for filter dropdown
   const { data: branches = [] } = useQuery({
@@ -51,12 +68,13 @@ export default function StockAdjustments() {
   })
 
   // Fetch adjustments
+  const effectiveBranch = isBranchScoped && user?.branchId ? user.branchId : selectedBranch
   const { data: adjustments = [], isLoading, refetch } = useQuery<StockAdjustmentLog[]>({
-    queryKey: ['stock-adjustments', selectedBranch, startDate, endDate],
+    queryKey: ['stock-adjustments', effectiveBranch, startDate, endDate],
     queryFn: async () => {
       const params: any = {}
-      if (selectedBranch && selectedBranch !== 'all') {
-        params.branchId = selectedBranch
+      if (effectiveBranch && effectiveBranch !== 'all') {
+        params.branchId = effectiveBranch
       }
       if (startDate) params.startDate = startDate
       if (endDate) params.endDate = endDate
@@ -271,20 +289,29 @@ export default function StockAdjustments() {
 
             {/* Branch Filter */}
             <div className="md:col-span-3">
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger>
-                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="All Branches" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Branches</SelectItem>
-                  {branches.map((b: any) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isBranchScoped ? (
+                <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-muted/40 text-sm font-medium">
+                  <Building2 className="w-4 h-4 text-primary shrink-0" />
+                  <span className="truncate">
+                    Branch: {branches.find((b: any) => b.id === user?.branchId)?.name || (user as any)?.branch?.name || 'My Branch'}
+                  </span>
+                </div>
+              ) : (
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger>
+                    <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="All Branches" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {branches.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Product Type Filter */}
@@ -349,14 +376,18 @@ export default function StockAdjustments() {
               >
                 Last 30 Days
               </Button>
-              {(startDate || endDate || search || selectedBranch !== 'all' || selectedType !== 'ALL') && (
+              {(startDate ||
+                endDate ||
+                search ||
+                (isBranchScoped ? false : selectedBranch !== 'all') ||
+                selectedType !== 'ALL') && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => {
                     setSearch('')
-                    setSelectedBranch('all')
+                    setSelectedBranch(isBranchScoped && user?.branchId ? user.branchId : 'all')
                     setSelectedType('ALL')
                     setQuickRange('clear')
                   }}

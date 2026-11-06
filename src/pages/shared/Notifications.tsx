@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import {
   Bell, CheckCircle, Smartphone, RotateCcw, Receipt, Check,
   Package, Building2, Clock, MapPin, Copy, Mail, MailX,
-  ShieldCheck, Trash2, ArrowRightLeft,
+  ShieldCheck, ShieldOff, Trash2, ArrowRightLeft, KeyRound,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -130,6 +130,7 @@ const Notifications = () => {
   const [rejectReason, setRejectReason] = useState('')
 
   const [approvedDevice, setApprovedDevice] = useState<{
+    id?: string
     code: string
     userName: string
     userEmail: string
@@ -169,18 +170,26 @@ const Notifications = () => {
   })
 
   const { data: pendingReturns } = useQuery({
-    queryKey: ['pending-returns'],
+    queryKey: ['pending-returns', user?.branchId],
     queryFn: async () => {
-      const response = await returnsApi.getAll({ status: 'PENDING' })
+      const params: any = { status: 'PENDING' }
+      if (user?.branchId && user?.role !== UserRole.SUPER_ADMIN) {
+        params.branchId = user.branchId
+      }
+      const response = await returnsApi.getAll(params)
       return response.data
     },
     enabled: isAdmin || isManager,
   })
 
   const { data: pendingExpenses } = useQuery({
-    queryKey: ['pending-expenses'],
+    queryKey: ['pending-expenses', user?.branchId],
     queryFn: async () => {
-      const response = await expensesApi.getAll({ status: 'PENDING' })
+      const params: any = { status: 'PENDING' }
+      if (user?.branchId && user?.role !== UserRole.SUPER_ADMIN) {
+        params.branchId = user.branchId
+      }
+      const response = await expensesApi.getAll(params)
       return response.data
     },
     enabled: isAdmin || isManager,
@@ -204,12 +213,13 @@ const Notifications = () => {
 
   const approveDeviceMutation = useMutation({
     mutationFn: (id: string) => devicesApi.approve(id),
-    onSuccess: (response: any) => {
+    onSuccess: (response: any, deviceId: string) => {
       queryClient.invalidateQueries({ queryKey: ['pending-devices'] })
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       const d = response.data
       setApprovedDevice({
+        id:         deviceId,
         code:       d.code,
         userName:   d.userName,
         userEmail:  d.userEmail,
@@ -217,6 +227,17 @@ const Notifications = () => {
         emailError: d.emailError ?? null,
       })
     },
+  })
+
+  const revokeDeviceMutation = useMutation({
+    mutationFn: (id: string) => devicesApi.revoke(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-devices'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      toast.success('Device authorization revoked')
+    },
+    onError: () => toast.error('Failed to revoke device authorization'),
   })
 
   const approveReturnMutation = useMutation({
@@ -569,14 +590,25 @@ const Notifications = () => {
                               </div>
                             )}
                           </div>
-                          <Button
-                            size="sm"
-                            disabled={approveDeviceMutation.isPending}
-                            onClick={() => approveDeviceMutation.mutate(device.id)}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            {approveDeviceMutation.isPending ? 'Approving…' : 'Re-generate Code'}
-                          </Button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              disabled={approveDeviceMutation.isPending}
+                              onClick={() => approveDeviceMutation.mutate(device.id)}
+                            >
+                              <KeyRound className="w-4 h-4 mr-1" />
+                              {approveDeviceMutation.isPending ? 'Generating…' : 'Generate Code'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={revokeDeviceMutation.isPending}
+                              onClick={() => revokeDeviceMutation.mutate(device.id)}
+                            >
+                              <ShieldOff className="w-4 h-4 mr-1" />
+                              Revoke
+                            </Button>
+                          </div>
                         </div>
 
                         {locationStr && (
@@ -597,7 +629,7 @@ const Notifications = () => {
                         </div>
 
                         <p className="text-xs text-muted-foreground italic">
-                          A code was sent in the notification. Click "Re-generate Code" only if you need a fresh one.
+                          Click "Generate Code" to create an authorization OTP for this device. The user must key it in to gain access.
                         </p>
                       </CardContent>
                     </Card>
@@ -664,13 +696,13 @@ const Notifications = () => {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Smartphone className="w-5 h-5" /> New Code Generated
+              <KeyRound className="w-5 h-5 text-primary" /> Authorization Code Generated
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-1">
             <p className="text-sm text-muted-foreground">
-              A fresh code has been generated for {approvedDevice?.userName}. Share it directly with the user.
+              A 6-digit OTP code has been generated for {approvedDevice?.userName}. The device will remain pending until the user keys in this code on the authorization screen.
             </p>
 
             {approvedDevice?.emailSent ? (
@@ -709,8 +741,22 @@ const Notifications = () => {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button className="w-full" onClick={() => setApprovedDevice(null)}>Done</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {approvedDevice?.id && (
+              <Button
+                variant="destructive"
+                className="w-full sm:w-auto"
+                disabled={revokeDeviceMutation.isPending}
+                onClick={() => {
+                  revokeDeviceMutation.mutate(approvedDevice.id!)
+                  setApprovedDevice(null)
+                }}
+              >
+                <ShieldOff className="w-4 h-4 mr-1.5" />
+                Revoke Access
+              </Button>
+            )}
+            <Button className="w-full sm:flex-1" onClick={() => setApprovedDevice(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

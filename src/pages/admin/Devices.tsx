@@ -29,6 +29,7 @@ import {
   User,
   Monitor,
   ExternalLink,
+  KeyRound,
 } from 'lucide-react'
 
 type TabValue = 'pending' | 'all'
@@ -42,6 +43,9 @@ const statusConfig: Record<string, { label: string; variant: 'warning' | 'succes
 // Parse a raw user-agent string into something human-readable
 function parseUserAgent(ua: string | null | undefined): string {
   if (!ua) return 'Unknown device'
+  if (ua.startsWith('Mobile:') || ua.startsWith('Desktop:') || ua.startsWith('Tablet:')) {
+    return ua
+  }
   if (ua.includes('iPhone'))  return `iPhone — ${ua.match(/OS [\d_]+/)?.[0]?.replace(/_/g, '.') ?? 'iOS'}`
   if (ua.includes('Android')) return `Android — ${ua.match(/Android [\d.]+/)?.[0] ?? ''}`
   if (ua.includes('iPad'))    return `iPad — ${ua.match(/OS [\d_]+/)?.[0]?.replace(/_/g, '.') ?? 'iPadOS'}`
@@ -57,6 +61,7 @@ export default function AdminDevices() {
 
   // Code dialog after approval
   const [approvedDevice, setApprovedDevice] = useState<{
+    id?: string
     code: string
     userName: string
     userEmail: string
@@ -86,13 +91,14 @@ export default function AdminDevices() {
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => devicesApi.approve(id),
-    onSuccess: (response: any) => {
+    onSuccess: (response: any, deviceId: string) => {
       queryClient.invalidateQueries({ queryKey: ['pending-devices'] })
       queryClient.invalidateQueries({ queryKey: ['devices-all'] })
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] })
       const d = response?.data ?? response   // handle both wrapped and unwrapped responses
       if (d?.code) {
         setApprovedDevice({
+          id:         d.deviceId ?? deviceId,
           code:       d.code,
           userName:   d.userName  ?? 'User',
           userEmail:  d.userEmail ?? '',
@@ -220,19 +226,35 @@ export default function AdminDevices() {
                           <span>{device.user.branch.name}</span>
                         </div>
                       )}
+                      {/* Prominent Device Name Display for all active and pending devices */}
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground bg-muted/50 rounded-md px-3 py-1.5 mt-2">
+                        <Monitor className="w-4 h-4 shrink-0 text-primary" />
+                        <span className="truncate">Device: {parsedDevice}</span>
+                      </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex gap-2 shrink-0">
                       {isPending && (
-                        <Button
-                          size="sm"
-                          disabled={approveMutation.isPending}
-                          onClick={() => approveMutation.mutate(device.id)}
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                          {approveMutation.isPending ? 'Approving…' : 'Approve'}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            disabled={approveMutation.isPending}
+                            onClick={() => approveMutation.mutate(device.id)}
+                          >
+                            <KeyRound className="w-4 h-4 mr-1.5" />
+                            {approveMutation.isPending ? 'Generating…' : 'Generate Code'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={revokeMutation.isPending}
+                            onClick={() => revokeMutation.mutate(device.id)}
+                          >
+                            <ShieldOff className="w-4 h-4 mr-1.5" />
+                            Revoke
+                          </Button>
+                        </div>
                       )}
                       {isApproved && (
                         <Button
@@ -347,28 +369,27 @@ export default function AdminDevices() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-green-600" /> Device Approved
+              <KeyRound className="w-5 h-5 text-primary" /> Authorization Code Generated
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-1">
             <p className="text-sm text-muted-foreground">
-              Share this code with{' '}
-              <span className="font-semibold text-foreground">{approvedDevice?.userName}</span>{' '}
-              directly (WhatsApp, call, or in-person). They need to enter it on the
-              Device Authorization screen.
+              A 6-digit OTP code has been generated for{' '}
+              <span className="font-semibold text-foreground">{approvedDevice?.userName}</span>.
+              The device will remain pending until the user keys in this code on the authorization screen.
             </p>
 
             {/* Email status */}
             {approvedDevice?.emailSent ? (
               <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
                 <Mail className="w-4 h-4 shrink-0" />
-                <span>Also emailed to <strong>{approvedDevice.userEmail}</strong></span>
+                <span>Code emailed to <strong>{approvedDevice.userEmail}</strong></span>
               </div>
             ) : (
               <div className="flex items-start gap-2 text-sm text-amber-800 dark:text-emerald-300 bg-amber-50 dark:bg-emerald-950/20 border border-amber-200 dark:border-emerald-500/40 rounded-md px-3 py-2">
                 <MailX className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-emerald-400" />
-                <span>{approvedDevice?.emailError ?? 'Email not configured — share the code below directly.'}</span>
+                <span>{approvedDevice?.emailError ?? 'Email not sent — share the code below directly.'}</span>
               </div>
             )}
 
@@ -394,13 +415,27 @@ export default function AdminDevices() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center">
-                Expires in 30 minutes · One-time use
+                Expires in 30 minutes · Single use
               </p>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button className="w-full" onClick={() => setApprovedDevice(null)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {approvedDevice?.id && (
+              <Button
+                variant="destructive"
+                className="w-full sm:w-auto"
+                disabled={revokeMutation.isPending}
+                onClick={() => {
+                  revokeMutation.mutate(approvedDevice.id!)
+                  setApprovedDevice(null)
+                }}
+              >
+                <ShieldOff className="w-4 h-4 mr-1.5" />
+                Revoke Access
+              </Button>
+            )}
+            <Button className="w-full sm:flex-1" onClick={() => setApprovedDevice(null)}>
               Done
             </Button>
           </DialogFooter>

@@ -79,6 +79,7 @@ const Sidebar = () => {
       items.push(
         { path: '/branch/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/inventory', icon: PackageSearch, label: 'Inventory' },
+        { path: '/stock-adjustments', icon: SlidersHorizontal, label: 'Stock Adjustments' },
         { path: '/closing-stock', icon: PackageCheck, label: 'Closing Stock' },
         { path: '/branch/new-sale', icon: ShoppingCart, label: 'New Sale' },
         { path: '/branch/invoices', icon: FileText, label: 'Invoices' },
@@ -86,6 +87,7 @@ const Sidebar = () => {
         { path: '/branch/returns', icon: RotateCcw, label: 'Returns' },
         { path: '/branch/expenses', icon: Receipt, label: 'Expenses' },
         { path: '/branch/transfers', icon: ArrowLeftRight, label: 'Transfers' },
+        { path: '/branch/reports', icon: BarChart3, label: 'Reports' },
         { path: '/notifications', icon: Bell, label: 'Notifications' },
         { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },
         { path: '/settings', icon: Settings, label: 'Settings' },
