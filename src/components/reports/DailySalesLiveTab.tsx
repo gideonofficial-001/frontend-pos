@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/utils'
 import { printDailyReport } from '@/lib/printDailyReport'
 import { Printer, Archive, Calendar, Store, ArrowDownRight, ArrowUpRight, DollarSign, ShoppingBag, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
+import { FinalReportReceiptSimulation } from './FinalReportReceiptSimulation'
 
 export const DailySalesLiveTab: React.FC = () => {
   const { user } = useAuthStore()
@@ -79,7 +80,15 @@ export const DailySalesLiveTab: React.FC = () => {
     wholesaleTotal: 0,
     totalDiscount: 0,
     grandTotal: 0,
+    netSales: 0,
+    paybillTotal: 0,
+    cashSalesTotal: 0,
+    difference1: 0,
     expenseTotal: 0,
+    regularExpenseTotal: 0,
+    pettyCashTotal: 0,
+    difference2: 0,
+    amountToBeSubmittedCash: 0,
     netTotal: 0,
   }
 
@@ -302,6 +311,38 @@ export const DailySalesLiveTab: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* 4. Live Receipt Simulation & EOD Cash Submission */}
+      <FinalReportReceiptSimulation
+        branchName={branchName}
+        date={date}
+        retailTotal={summary.retailTotal}
+        wholesaleTotal={summary.wholesaleTotal}
+        netSales={summary.netSales ?? (summary.retailTotal + summary.wholesaleTotal)}
+        paybillTotal={summary.paybillTotal ?? 0}
+        difference1={
+          summary.difference1 ??
+          ((summary.netSales ?? (summary.retailTotal + summary.wholesaleTotal)) - (summary.paybillTotal ?? 0))
+        }
+        expenseTotal={summary.expenseTotal ?? 0}
+        pettyCashTotal={summary.pettyCashTotal ?? 0}
+        regularExpenseTotal={summary.regularExpenseTotal ?? 0}
+        difference2={
+          summary.difference2 ??
+          (((summary.netSales ?? (summary.retailTotal + summary.wholesaleTotal)) -
+            (summary.paybillTotal ?? 0)) -
+            (summary.expenseTotal ?? 0))
+        }
+        amountToBeSubmittedCash={
+          summary.amountToBeSubmittedCash ??
+          summary.difference2 ??
+          (((summary.netSales ?? (summary.retailTotal + summary.wholesaleTotal)) -
+            (summary.paybillTotal ?? 0)) -
+            (summary.expenseTotal ?? 0))
+        }
+        cashierName={user ? `${user.firstName} ${user.lastName}` : undefined}
+        isLoading={isLoading}
+      />
     </div>
   )
 }
