@@ -115,25 +115,25 @@
   }
 
   .theme-cyan {
-    --background: 186 65% 97%;
-    --foreground: 195 95% 8%;
-    --card: 186 35% 99%;
-    --card-foreground: 195 95% 8%;
-    --popover: 186 35% 99%;
-    --popover-foreground: 195 95% 8%;
-    --primary: 186 100% 42%;
-    --primary-foreground: 195 95% 5%;
-    --secondary: 186 35% 90%;
-    --secondary-foreground: 195 85% 10%;
-    --muted: 186 28% 92%;
-    --muted-foreground: 195 35% 28%;
-    --accent: 186 45% 88%;
-    --accent-foreground: 195 85% 10%;
+    --background: 195 55% 5.5%;
+    --foreground: 186 25% 96%;
+    --card: 195 45% 8.5%;
+    --card-foreground: 186 25% 96%;
+    --popover: 195 45% 8.5%;
+    --popover-foreground: 186 25% 96%;
+    --primary: 188 95% 42%;
+    --primary-foreground: 195 90% 5%;
+    --secondary: 195 32% 14%;
+    --secondary-foreground: 186 25% 95%;
+    --muted: 195 28% 12%;
+    --muted-foreground: 186 20% 65%;
+    --accent: 195 35% 17%;
+    --accent-foreground: 186 35% 96%;
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 186 45% 82%;
-    --input: 186 45% 82%;
-    --ring: 186 100% 42%;
+    --border: 195 30% 16%;
+    --input: 195 30% 16%;
+    --ring: 188 95% 42%;
   }
 
   .theme-sleek {

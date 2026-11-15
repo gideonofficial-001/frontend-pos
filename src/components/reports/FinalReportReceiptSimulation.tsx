@@ -59,13 +59,16 @@ export const FinalReportReceiptSimulation: React.FC<FinalReportReceiptSimulation
   const is58mm = selectedPaperWidth === '58mm'
   const receiptWidthPx = is58mm ? 250 : 330
   const storeName = printerStore.storeName || 'NJUGUSH ENT'
-  const branchLabel = branchName ? branchName.toUpperCase() : 'STORE'
+  const isUuid = (str?: string) => !str || /^[0-9a-fA-F-]{16,}$/.test(str.trim())
+  const isGeneric = (str?: string) => !str || ['STORE', 'BRANCH', 'UNKNOWN', 'STORE NAME'].includes(str.trim().toUpperCase())
+  const cleanBranch = (!branchName || isUuid(branchName) || isGeneric(branchName)) ? '' : branchName.trim()
+  const receiptTitle = cleanBranch ? `${storeName} (${cleanBranch.toUpperCase()}).` : `${storeName}.`
   const formattedDate = date || new Date().toISOString().split('T')[0]
 
   const handlePrint = () => {
     printFinalReportReceipt({
       storeName,
-      branchName,
+      branchName: cleanBranch,
       date: formattedDate,
       retailTotal,
       wholesaleTotal,
@@ -85,7 +88,7 @@ export const FinalReportReceiptSimulation: React.FC<FinalReportReceiptSimulation
 
   const handleCopy = () => {
     const text = [
-      `${storeName} (${branchLabel}).     ${formattedDate}`,
+      `${receiptTitle}     ${formattedDate}`,
       `> Final Report`,
       ``,
       `Net sales (retail + wholesale): ${formatCurrency(netSales)}`,
@@ -292,7 +295,7 @@ export const FinalReportReceiptSimulation: React.FC<FinalReportReceiptSimulation
                 {/* Header matching exact user spec: NJUGUSH ENT (STORE NAME).     {DATE} */}
                 <div className="text-center space-y-0.5 border-b border-dashed border-slate-400 pb-2 mb-2">
                   <p className="font-black text-sm uppercase tracking-wide">
-                    {storeName} ({branchLabel}).
+                    {receiptTitle}
                   </p>
                   <p className="text-[11px] text-slate-700 font-semibold">{formattedDate}</p>
                   <p className="font-bold text-[12px] pt-1 text-slate-900">&gt; Final Report</p>

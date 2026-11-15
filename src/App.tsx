@@ -123,7 +123,7 @@ function App() {
     } else if (theme === 'aqua') {
       root.classList.add('dark', 'theme-aqua')
     } else if (theme === 'cyan') {
-      root.classList.add('theme-cyan')
+      root.classList.add('dark', 'theme-cyan')
     } else if (theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech') {
       root.classList.add('dark', 'theme-sleek')
     }

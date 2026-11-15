@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   ShoppingCart, Minus, Plus, Trash2, Search, Package, Flame, Tag,
-  Bookmark, RotateCcw, ShieldAlert, KeyRound, Check
+  Bookmark, RotateCcw, ShieldAlert, KeyRound, Check, LayoutGrid, List
 } from 'lucide-react'
 import { PaymentSplitModal, PaymentEntry } from './PaymentSplitModal'
 import { ThermalReceiptModal } from './ThermalReceiptModal'
@@ -51,6 +51,22 @@ const NewSale = () => {
   const [invoiceReceipt, setInvoiceReceipt] = useState<{
     code: string; name: string; phone: string; total: number; itemsStr: string
   } | null>(null)
+
+  // Catalog View Mode (Grid vs List) with first-time onboarding prompt
+  const [displayMode, setDisplayMode] = useState<'grid' | 'list'>(() => {
+    return (localStorage.getItem('pos_product_catalog_view') as 'grid' | 'list') || 'grid'
+  })
+  const [chooseViewModalOpen, setChooseViewModalOpen] = useState(() => {
+    return !localStorage.getItem('pos_product_catalog_view_chosen')
+  })
+
+  const handleSetDisplayMode = (mode: 'grid' | 'list') => {
+    setDisplayMode(mode)
+    localStorage.setItem('pos_product_catalog_view', mode)
+    localStorage.setItem('pos_product_catalog_view_chosen', 'true')
+    setChooseViewModalOpen(false)
+    toast.success(`Product catalog set to ${mode === 'grid' ? 'Grid' : 'List'} view`)
+  }
 
   const requiresCustomer = saleType === SaleType.INVOICE || saleType === SaleType.WHOLESALE
   const branchId = user?.branchId || ''
@@ -279,27 +295,52 @@ const NewSale = () => {
 
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 flex-1 min-h-0">
 
-        {/* ── PRODUCTS GRID ── */}
-        <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-[50vh] lg:h-full bg-muted/10 rounded-xl border overflow-hidden shadow-sm">
-          <div className="p-4 bg-card border-b flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+        {/* ── PRODUCTS COMPARTMENT (Compact ~1.5 card height so checkout is never crowded) ── */}
+        <div className="lg:col-span-5 xl:col-span-5 flex flex-col bg-muted/10 rounded-xl border overflow-hidden shadow-xs">
+          <div className="p-3 bg-card border-b flex-shrink-0 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search product name, code, or scan barcode..."
+                placeholder="Search product, code, or scan..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-12 h-14 text-lg focus-visible:ring-primary shadow-sm"
+                className="pl-9 h-9 text-sm focus-visible:ring-primary shadow-xs"
               />
             </div>
+            {/* View toggle (Grid vs List) */}
+            <div className="flex items-center gap-0.5 bg-muted p-0.5 rounded-lg border shrink-0">
+              <Button
+                type="button"
+                variant={displayMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handleSetDisplayMode('grid')}
+                title="Grid view"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+              <Button
+                type="button"
+                variant={displayMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handleSetDisplayMode('list')}
+                title="List view"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
+
+          {/* Sized to ~1.5 card height (195px-210px) with smooth scroll */}
+          <div className="max-h-[195px] sm:max-h-[210px] overflow-y-auto p-2.5">
             {filteredInventory.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
-                <Package className="w-12 h-12 mb-4 opacity-30" />
-                <p>No products found {search.trim() !== '' && `matching "${search}"`}</p>
+              <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+                <Package className="w-8 h-8 mb-2 opacity-30" />
+                <p className="text-xs">No products found {search.trim() !== '' && `matching "${search}"`}</p>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            ) : displayMode === 'grid' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {filteredInventory.map((inv: any) => {
                   const product = inv.product
                   const isLpg = product.type === 'LPG_REFILL' || product.type === 'LPG_CYLINDER'
@@ -309,7 +350,7 @@ const NewSale = () => {
                   return (
                     <Card
                       key={product.id}
-                      className="cursor-pointer transition-all hover:border-primary hover:shadow-md bg-card"
+                      className="cursor-pointer transition-all hover:border-primary hover:shadow-xs bg-card p-2.5 flex flex-col justify-between h-[115px] select-none"
                       onClick={() => {
                         if (isLpg) {
                           setSelectedInvItem({ ...inv, emptyCylinders: (inv.quantity || 0) - (inv.fullCylinders || 0) })
@@ -320,21 +361,60 @@ const NewSale = () => {
                         }
                       }}
                     >
-                      <CardContent className="p-4 flex flex-col h-full justify-between gap-3">
-                        <div className="flex items-start justify-between">
-                          <div className={`p-2 rounded-lg ${isLpg ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                            {isLpg ? <Flame size={16} /> : <Package size={16} />}
-                          </div>
-                          <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${availableStock <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {availableStock} left
-                          </span>
+                      <div className="flex items-start justify-between">
+                        <div className={`p-1 rounded-md ${isLpg ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                          {isLpg ? <Flame size={13} /> : <Package size={13} />}
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-sm line-clamp-2 leading-snug">{product.name}</h4>
-                          <p className="text-lg font-black text-primary mt-1">{formatCurrency(displayPrice)}</p>
-                        </div>
-                      </CardContent>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${availableStock <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {availableStock} left
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-xs line-clamp-1 leading-snug">{product.name}</h4>
+                        <p className="text-sm font-black text-primary mt-0.5">{formatCurrency(displayPrice)}</p>
+                      </div>
                     </Card>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredInventory.map((inv: any) => {
+                  const product = inv.product
+                  const isLpg = product.type === 'LPG_REFILL' || product.type === 'LPG_CYLINDER'
+                  const availableStock = isLpg ? (inv.fullCylinders || 0) : inv.quantity
+                  const displayPrice = saleType === SaleType.WHOLESALE
+                    ? (product.wholesalePrice || product.price) : product.price
+                  return (
+                    <div
+                      key={product.id}
+                      className="flex items-center justify-between p-2 rounded-lg border bg-card hover:border-primary/50 hover:bg-muted/30 cursor-pointer transition-all h-[42px] select-none"
+                      onClick={() => {
+                        if (isLpg) {
+                          setSelectedInvItem({ ...inv, emptyCylinders: (inv.quantity || 0) - (inv.fullCylinders || 0) })
+                          setLpgModalOpen(true)
+                        } else {
+                          addItem({ ...product, price: displayPrice }, 1)
+                          setSearch('')
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className={`p-1 rounded-md shrink-0 ${isLpg ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                          {isLpg ? <Flame size={13} /> : <Package size={13} />}
+                        </div>
+                        <span className="font-semibold text-xs text-foreground truncate block">{product.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0 ml-2">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${availableStock <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {availableStock} left
+                        </span>
+                        <span className="font-black text-xs text-primary">{formatCurrency(displayPrice)}</span>
+                        <span className="text-[11px] font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded-md">
+                          + Add
+                        </span>
+                      </div>
+                    </div>
                   )
                 })}
               </div>
@@ -342,8 +422,8 @@ const NewSale = () => {
           </div>
         </div>
 
-        {/* ── CART ── */}
-        <div className="lg:col-span-5 xl:col-span-5 flex flex-col h-auto lg:h-full">
+        {/* ── CART / CHECKOUT ── */}
+        <div className="lg:col-span-7 xl:col-span-7 flex flex-col h-auto lg:h-full">
           <Card className="flex flex-col h-full border-primary/10 shadow-md">
             <CardHeader className="pb-3 flex-shrink-0 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
@@ -458,23 +538,40 @@ const NewSale = () => {
 
                       {/* Bottom Controls Row: Stepper and Discount button */}
                       <div className="flex items-center justify-between pt-2 border-t border-border/50 gap-2">
-                        <div className="flex items-center bg-muted/60 rounded-lg border p-1 shadow-xs">
+                        <div className="flex items-center bg-muted/60 rounded-lg border p-1 shadow-xs gap-0.5">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-background hover:shadow-xs active:scale-95 transition-all text-foreground"
+                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-background hover:shadow-xs active:scale-95 transition-all text-foreground shrink-0"
                             onClick={() => updateQuantity(item.productId, item.quantity - 1)}
                             title="Decrease quantity"
                           >
                             <Minus className="w-4 h-4 stroke-[2.5]" />
                           </Button>
-                          <span className="w-9 sm:w-11 text-center text-base sm:text-lg font-black text-foreground tabular-nums">
-                            {item.quantity}
-                          </span>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.quantity === 0 ? '' : item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10)
+                              if (!isNaN(val) && val > 0) {
+                                updateQuantity(item.productId, val)
+                              } else if (e.target.value === '') {
+                                updateQuantity(item.productId, 0)
+                              }
+                            }}
+                            onBlur={() => {
+                              if (!item.quantity || item.quantity < 1) {
+                                updateQuantity(item.productId, 1)
+                              }
+                            }}
+                            className="w-12 sm:w-16 h-8 text-center text-sm sm:text-base font-black text-foreground tabular-nums p-0 rounded-md border-border bg-background/80 focus:bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            title="Type quantity or use +/- buttons"
+                          />
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-background hover:shadow-xs active:scale-95 transition-all text-foreground"
+                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-md hover:bg-background hover:shadow-xs active:scale-95 transition-all text-foreground shrink-0"
                             onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                             title="Increase quantity"
                           >
@@ -756,6 +853,92 @@ const NewSale = () => {
                 )
               })
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* First-time view selection dialog */}
+      <Dialog open={chooseViewModalOpen} onOpenChange={setChooseViewModalOpen}>
+        <DialogContent className="max-w-md sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <LayoutGrid className="w-5 h-5 text-primary" />
+              Choose Product Display Style
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Choose how you would like products to appear in the sales catalog. You can switch anytime using the toggle button on the sales page.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Grid Option */}
+              <div
+                className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:border-primary/80 flex flex-col justify-between space-y-3 ${
+                  displayMode === 'grid' ? 'border-primary bg-primary/5 shadow-xs' : 'border-border bg-card'
+                }`}
+                onClick={() => handleSelectDisplayMode('grid')}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm flex items-center gap-1.5">
+                      <LayoutGrid className="w-4 h-4 text-primary" /> Grid View
+                    </span>
+                    {displayMode === 'grid' && <Check className="w-4 h-4 text-primary" />}
+                  </div>
+                  {/* Mini visual mockup */}
+                  <div className="p-2 bg-muted/40 rounded-lg grid grid-cols-2 gap-1.5 pointer-events-none">
+                    <div className="h-10 bg-card rounded border p-1 text-[9px] flex flex-col justify-between">
+                      <Package size={11} className="text-blue-500" />
+                      <span className="font-bold truncate">Item A</span>
+                    </div>
+                    <div className="h-10 bg-card rounded border p-1 text-[9px] flex flex-col justify-between">
+                      <Flame size={11} className="text-orange-500" />
+                      <span className="font-bold truncate">Item B</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Visual tile cards with icons and stock badges. Great for visual scanning.
+                  </p>
+                </div>
+                <Button size="sm" className="w-full mt-2" onClick={() => handleSelectDisplayMode('grid')}>
+                  Choose Grid View
+                </Button>
+              </div>
+
+              {/* List Option */}
+              <div
+                className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:border-primary/80 flex flex-col justify-between space-y-3 ${
+                  displayMode === 'list' ? 'border-primary bg-primary/5 shadow-xs' : 'border-border bg-card'
+                }`}
+                onClick={() => handleSelectDisplayMode('list')}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm flex items-center gap-1.5">
+                      <List className="w-4 h-4 text-primary" /> List View
+                    </span>
+                    {displayMode === 'list' && <Check className="w-4 h-4 text-primary" />}
+                  </div>
+                  {/* Mini visual mockup */}
+                  <div className="p-2 bg-muted/40 rounded-lg space-y-1.5 pointer-events-none">
+                    <div className="h-5 bg-card rounded border px-1.5 flex items-center justify-between text-[9px]">
+                      <span className="truncate">Item A</span>
+                      <span className="font-bold">1,500</span>
+                    </div>
+                    <div className="h-5 bg-card rounded border px-1.5 flex items-center justify-between text-[9px]">
+                      <span className="truncate">Item B</span>
+                      <span className="font-bold">850</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Compact rows for high density, fastest scanning, and maximum checkout space.
+                  </p>
+                </div>
+                <Button size="sm" variant={displayMode === 'list' ? 'default' : 'outline'} className="w-full mt-2" onClick={() => handleSelectDisplayMode('list')}>
+                  Choose List View
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

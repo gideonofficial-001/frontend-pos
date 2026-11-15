@@ -31,7 +31,10 @@ export function printFinalReportReceipt(data: FinalReportReceiptData) {
   const win = window.open('', '_blank', 'width=380,height=600')
   if (!win) return
 
-  const branchLabel = data.branchName ? data.branchName.toUpperCase() : 'STORE'
+  const isUuid = (str?: string) => !str || /^[0-9a-fA-F-]{16,}$/.test(str.trim())
+  const isGeneric = (str?: string) => !str || ['STORE', 'BRANCH', 'UNKNOWN', 'STORE NAME'].includes(str.trim().toUpperCase())
+  const cleanBranch = (!data.branchName || isUuid(data.branchName) || isGeneric(data.branchName)) ? '' : data.branchName.trim()
+  const headerTitle = cleanBranch ? `${storeName} (${cleanBranch.toUpperCase()})` : storeName
   const formattedDate = data.date || new Date().toLocaleDateString('en-GB')
 
   const html = `<!DOCTYPE html>
@@ -111,7 +114,7 @@ export function printFinalReportReceipt(data: FinalReportReceiptData) {
 </head>
 <body>
   <div class="text-center">
-    <div class="header-title">${storeName} (${branchLabel})</div>
+    <div class="header-title">${headerTitle}</div>
     <div class="sub">${formattedDate}</div>
     <div class="bold" style="margin-top: 4px; font-size: 1.05em;">&gt; Final Report</div>
   </div>

@@ -1,8 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { useAuthStore, useSidebarStore } from '@/store'
+import { useQuery } from '@tanstack/react-query'
+import { useAuthStore, useSidebarStore, useCartStore } from '@/store'
 import { useThemeStore } from '@/store/theme'
 import { UserRole } from '@/types'
 import { Logo } from '@/components/Logo'
+import { notificationsApi, invoicesApi } from '@/api'
 import {
   LayoutDashboard, Users, Building2, PackageSearch, PackageCheck, UsersRound,
   ShoppingCart, FileText, RotateCcw, History, BarChart3,
@@ -18,6 +20,78 @@ const Sidebar = () => {
   const { collapsed, mobileOpen, toggleCollapsed, setMobileOpen } = useSidebarStore()
   const { theme, toggleTheme } = useThemeStore()
   const location = useLocation()
+  const cartItemsCount = useCartStore((state) => state.items.length)
+
+  // Fetch pending approvals for returns, transfers, devices, expenses
+  const { data: pendingApprovals } = useQuery({
+    queryKey: ['pending-approvals'],
+    queryFn: async () => {
+      try {
+        const res = await notificationsApi.getPendingApprovals()
+        return res.data
+      } catch {
+        return null
+      }
+    },
+    enabled: !!user,
+    refetchInterval: 15000,
+  })
+
+  // Fetch unread notifications
+  const { data: unreadNotifications } = useQuery({
+    queryKey: ['unread-count'],
+    queryFn: async () => {
+      try {
+        const res = await notificationsApi.getUnreadCount()
+        return res.data
+      } catch {
+        return { count: 0 }
+      }
+    },
+    enabled: !!user,
+    refetchInterval: 15000,
+  })
+
+  // Fetch pending invoices count
+  const { data: pendingInvoicesCount } = useQuery({
+    queryKey: ['pending-invoices-count', user?.branchId],
+    queryFn: async () => {
+      try {
+        const res = await invoicesApi.getAll({ status: 'PENDING' })
+        const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+        return list.length
+      } catch {
+        return 0
+      }
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  })
+
+  const getBadgeCount = (path: string): number => {
+    if (path === '/notifications') {
+      return (unreadNotifications?.count || 0) + (pendingApprovals?.total || 0)
+    }
+    if (path.includes('/returns')) {
+      return pendingApprovals?.pendingReturns || 0
+    }
+    if (path.includes('/transfers')) {
+      return pendingApprovals?.pendingTransfers || 0
+    }
+    if (path.includes('/expenses')) {
+      return pendingApprovals?.pendingExpenses || 0
+    }
+    if (path.includes('/devices')) {
+      return pendingApprovals?.pendingDevices || 0
+    }
+    if (path === '/branch/new-sale') {
+      return cartItemsCount || 0
+    }
+    if (path.includes('/invoices')) {
+      return pendingInvoicesCount || 0
+    }
+    return 0
+  }
 
   const handleLogout = () => {
     clearAuth()
@@ -115,23 +189,52 @@ const Sidebar = () => {
 
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                    isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )
-                }
-              >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </NavLink>
-            </li>
-          ))}
+          {navItems.map((item) => {
+            const badge = getBadgeCount(item.path)
+            return (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative',
+                      isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )
+                  }
+                  title={collapsed && badge > 0 ? `${item.label} (${badge})` : item.label}
+                >
+                  <div className="relative shrink-0 flex items-center justify-center">
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    {collapsed && badge > 0 && (
+                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    )}
+                  </div>
+                  {!collapsed && (
+                    <>
+                      <span className="truncate flex-1">{item.label}</span>
+                      {badge > 0 && (
+                        <span
+                          className={cn(
+                            'ml-auto text-[11px] font-bold px-1.5 py-0.5 rounded-full tabular-nums',
+                            item.path === '/branch/new-sale'
+                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                              : item.path === '/notifications'
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              : 'bg-primary/15 text-primary'
+                          )}
+                        >
+                          {badge > 99 ? '99+' : badge}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            )
+          })}
         </ul>
       </nav>
 
@@ -147,7 +250,7 @@ const Sidebar = () => {
               : theme === 'aqua'
               ? 'Oceanic Aqua'
               : theme === 'cyan'
-              ? 'Bright Cyan'
+              ? 'Dark Cyan'
               : theme === 'obsidian-sleek' || (theme as string) === 'sleek-tech'
               ? 'Obsidian Sleek'
               : theme === 'dark'

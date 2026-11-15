@@ -61,7 +61,7 @@ export const DailySalesLiveTab: React.FC = () => {
   const branchName =
     effectiveBranchId === 'all'
       ? 'All Branches'
-      : (branches?.find((b: any) => b.id === effectiveBranchId)?.name || user?.branchId || 'Branch')
+      : (branches?.find((b: any) => b.id === effectiveBranchId)?.name || (user as any)?.branch?.name || (user as any)?.branchName || report?.branch?.name || '')
 
   const handlePrint = () => {
     if (!report) return
