@@ -14,7 +14,6 @@ import {
   Smartphone,
   MinusCircle,
   Equal,
-  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 

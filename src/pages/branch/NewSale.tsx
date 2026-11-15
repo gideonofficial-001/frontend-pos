@@ -67,6 +67,7 @@ const NewSale = () => {
     setChooseViewModalOpen(false)
     toast.success(`Product catalog set to ${mode === 'grid' ? 'Grid' : 'List'} view`)
   }
+  const handleSelectDisplayMode = handleSetDisplayMode
 
   const requiresCustomer = saleType === SaleType.INVOICE || saleType === SaleType.WHOLESALE
   const branchId = user?.branchId || ''
@@ -876,7 +877,7 @@ const NewSale = () => {
                 className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:border-primary/80 flex flex-col justify-between space-y-3 ${
                   displayMode === 'grid' ? 'border-primary bg-primary/5 shadow-xs' : 'border-border bg-card'
                 }`}
-                onClick={() => handleSelectDisplayMode('grid')}
+                onClick={() => handleSetDisplayMode('grid')}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -900,7 +901,7 @@ const NewSale = () => {
                     Visual tile cards with icons and stock badges. Great for visual scanning.
                   </p>
                 </div>
-                <Button size="sm" className="w-full mt-2" onClick={() => handleSelectDisplayMode('grid')}>
+                <Button size="sm" className="w-full mt-2" onClick={() => handleSetDisplayMode('grid')}>
                   Choose Grid View
                 </Button>
               </div>
@@ -910,7 +911,7 @@ const NewSale = () => {
                 className={`border-2 rounded-xl p-4 cursor-pointer transition-all hover:border-primary/80 flex flex-col justify-between space-y-3 ${
                   displayMode === 'list' ? 'border-primary bg-primary/5 shadow-xs' : 'border-border bg-card'
                 }`}
-                onClick={() => handleSelectDisplayMode('list')}
+                onClick={() => handleSetDisplayMode('list')}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -934,7 +935,7 @@ const NewSale = () => {
                     Compact rows for high density, fastest scanning, and maximum checkout space.
                   </p>
                 </div>
-                <Button size="sm" variant={displayMode === 'list' ? 'default' : 'outline'} className="w-full mt-2" onClick={() => handleSelectDisplayMode('list')}>
+                <Button size="sm" variant={displayMode === 'list' ? 'default' : 'outline'} className="w-full mt-2" onClick={() => handleSetDisplayMode('list')}>
                   Choose List View
                 </Button>
               </div>
