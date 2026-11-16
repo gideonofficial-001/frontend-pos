@@ -76,6 +76,9 @@ const Sidebar = () => {
       return pendingApprovals?.pendingReturns || 0
     }
     if (path.includes('/transfers')) {
+      if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.OVERALL_MANAGER) {
+        return 0 // Admins and Overall Managers only view completed transfer histories, no pending badges
+      }
       return pendingApprovals?.pendingTransfers || 0
     }
     if (path.includes('/expenses')) {
@@ -142,6 +145,7 @@ const Sidebar = () => {
         { path: '/customers', icon: UsersRound, label: 'Customers' },
         { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
         { path: '/admin/sales-history', icon: History, label: 'Sales History' },
+        { path: '/admin/transfers', icon: ArrowLeftRight, label: 'Transfers' },
         { path: '/manager/reports', icon: BarChart3, label: 'Reports' },
         { path: '/notifications', icon: Bell, label: 'Notifications' },
         { path: '/printer-setup', icon: Printer, label: 'Printer Setup' },

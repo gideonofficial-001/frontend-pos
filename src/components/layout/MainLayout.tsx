@@ -5,6 +5,7 @@ import { useAuthStore, useSidebarStore, useNotificationStore } from '@/store'
 import { notificationsApi } from '@/api'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import { SystemTourGuide } from '@/components/onboarding/SystemTourGuide'
 
 const MainLayout = () => {
   const { user } = useAuthStore()
@@ -37,6 +38,7 @@ const MainLayout = () => {
           <Outlet />
         </main>
       </div>
+      <SystemTourGuide />
     </div>
   )
 }

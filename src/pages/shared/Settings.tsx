@@ -3,18 +3,20 @@ import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/store'
 import { useThemeStore } from '@/store/theme'
 import { usePrinterStore } from '@/store/printer'
+import { useTourStore } from '@/store/tour'
 import api from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets, Printer, SlidersHorizontal, Cpu } from 'lucide-react'
+import { UserCircle, Shield, Eye, EyeOff, Check, AlertCircle, LogOut, Palette, Sun, Moon, Sparkles, Heart, Droplets, Printer, SlidersHorizontal, Cpu, Compass } from 'lucide-react'
 
 const Settings = () => {
   const { user, token, setAuth, clearAuth } = useAuthStore()
   const { theme, setTheme } = useThemeStore()
   const printer = usePrinterStore()
+  const { openTour } = useTourStore()
   
   // Profile State
   const [firstName, setFirstName] = useState(user?.firstName || '')
@@ -440,6 +442,36 @@ const Settings = () => {
                 </Button>
               </Link>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* System Tour & Help Card */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Compass className="w-5 h-5 text-primary" /> System Walkthrough & Feature Tour
+          </CardTitle>
+          <CardDescription>
+            Need a refresher on POS checkout shortcuts, live badge indicators, transfer audits, or thermal receipt simulations? Replay the onboarding tour at any time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg border">
+            <div>
+              <p className="font-semibold text-sm">Interactive System Tour</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Launches the 6-step guided walkthrough covering all key system elements.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="gap-2 shrink-0 border-primary/30 text-primary hover:bg-primary/5"
+              onClick={() => openTour(0)}
+            >
+              <Compass className="w-4 h-4" />
+              Replay System Tour
+            </Button>
           </div>
         </CardContent>
       </Card>

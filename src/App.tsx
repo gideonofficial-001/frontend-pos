@@ -177,7 +177,7 @@ function App() {
           <Route path="/branch/expenses" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]}><Expenses /></ProtectedRoute>} />
           <Route path="/branch/transfers" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><TransfersPage /></ProtectedRoute>} />
           <Route path="/branch/reports" element={<ProtectedRoute allowedRoles={[UserRole.BRANCH_MANAGER]}><Reports /></ProtectedRoute>} />
-          <Route path="/admin/transfers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}><TransfersPage /></ProtectedRoute>} />
+          <Route path="/admin/transfers" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER]}><TransfersPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.OVERALL_MANAGER, UserRole.BRANCH_MANAGER]}><Reports /></ProtectedRoute>} />
 
           {/* Shared Routes */}

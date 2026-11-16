@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api, { branchesApi } from '@/api';
 import { useAuthStore } from '@/store';
+import { UserRole } from '@/types';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,15 +53,20 @@ const itemStatusConfig = {
 
 export default function TransfersPage() {
   const { user } = useAuthStore();
+  const isAdminOrOverallManager =
+    user?.role === UserRole.SUPER_ADMIN ||
+    user?.role === UserRole.OVERALL_MANAGER;
+
   const [searchParams] = useSearchParams();
   const targetId = searchParams.get('id');
   const tabParam = searchParams.get('tab');
 
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'history'>(
-    tabParam === 'outgoing' || tabParam === 'history' ? tabParam : 'incoming'
-  );
+  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'history'>(() => {
+    if (isAdminOrOverallManager) return 'history';
+    return tabParam === 'outgoing' || tabParam === 'history' ? tabParam : 'incoming';
+  });
 
   // ── History Filters & Pagination State ────────────────────
   const [historyPage, setHistoryPage] = useState(1);
@@ -100,7 +106,13 @@ export default function TransfersPage() {
   };
 
   const isActive   = (t: Transfer) => t.status === 'PENDING' || t.status === 'PARTIAL';
-  const isHistory  = (t: Transfer) => t.status === 'COMPLETED' || t.status === 'CANCELLED';
+  // Admin and Overall Manager only view completed transfer histories; pending ones are never displayed
+  const isHistory  = (t: Transfer) => {
+    if (isAdminOrOverallManager) {
+      return t.status === 'COMPLETED';
+    }
+    return t.status === 'COMPLETED' || t.status === 'CANCELLED';
+  };
 
   // Auto-open transfer if ID passed in URL
   useEffect(() => {
@@ -149,8 +161,20 @@ export default function TransfersPage() {
         }
       }
       // Direction filter
-      if (filterDirection === 'incoming' && !isIncoming(t)) return false;
-      if (filterDirection === 'outgoing' && !isOutgoing(t)) return false;
+      if (filterDirection === 'incoming') {
+        if (user?.branchId) {
+          if (!isIncoming(t)) return false;
+        } else if (filterBranch !== 'all') {
+          if (t.toBranch.id !== filterBranch) return false;
+        }
+      }
+      if (filterDirection === 'outgoing') {
+        if (user?.branchId) {
+          if (!isOutgoing(t)) return false;
+        } else if (filterBranch !== 'all') {
+          if (t.fromBranch.id !== filterBranch) return false;
+        }
+      }
 
       return true;
     });
@@ -229,7 +253,38 @@ export default function TransfersPage() {
   const TransferCard = ({ transfer }: { transfer: Transfer }) => {
     const cfg = statusConfig[transfer.status];
     const StatusIcon = cfg.icon;
-    const incoming = isIncoming(transfer);
+
+    const renderDirectionBadge = () => {
+      if (user?.branchId) {
+        const incoming = isIncoming(transfer);
+        return (
+          <Badge variant="outline" className={incoming
+            ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300'
+            : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300'}>
+            {incoming
+              ? <><ArrowDownLeft className="w-3 h-3 mr-1" />Incoming</>
+              : <><ArrowUpRight className="w-3 h-3 mr-1" />Outgoing</>}
+          </Badge>
+        );
+      }
+      if (filterBranch !== 'all') {
+        const incomingToSelected = transfer.toBranch.id === filterBranch;
+        return (
+          <Badge variant="outline" className={incomingToSelected
+            ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300'
+            : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300'}>
+            {incomingToSelected
+              ? <><ArrowDownLeft className="w-3 h-3 mr-1" />Incoming to Branch</>
+              : <><ArrowUpRight className="w-3 h-3 mr-1" />Outgoing from Branch</>}
+          </Badge>
+        );
+      }
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300">
+          <ArrowRightLeft className="w-3 h-3 mr-1" />Inter-Branch
+        </Badge>
+      );
+    };
 
     return (
       <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedTransfer(transfer)}>
@@ -240,13 +295,7 @@ export default function TransfersPage() {
                 <Badge variant="outline" className={cfg.color}>
                   <StatusIcon className="w-3 h-3 mr-1" />{cfg.label}
                 </Badge>
-                <Badge variant="outline" className={incoming
-                  ? 'bg-purple-50 text-purple-700 border-purple-200'
-                  : 'bg-gray-50 text-gray-700 border-gray-200'}>
-                  {incoming
-                    ? <><ArrowDownLeft className="w-3 h-3 mr-1" />Incoming</>
-                    : <><ArrowUpRight className="w-3 h-3 mr-1" />Outgoing</>}
-                </Badge>
+                {renderDirectionBadge()}
               </div>
               <p className="text-sm font-medium truncate">
                 {transfer.fromBranch.name}
@@ -297,186 +346,222 @@ export default function TransfersPage() {
     }
   };
 
+  const renderHistoryContent = () => (
+    <div className="space-y-4">
+      {/* ── Filters Bar ── */}
+      <div className="bg-card border rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between gap-2 border-b pb-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <Filter className="w-3.5 h-3.5 text-primary" /> Filter History
+          </div>
+          {isAnyFilterActive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" /> Reset Filters
+            </Button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Date Filter */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" /> Date
+            </label>
+            <Input
+              type="date"
+              value={filterDate}
+              onChange={(e) => {
+                setFilterDate(e.target.value);
+                setHistoryPage(1);
+              }}
+              className="h-9 text-xs sm:text-sm bg-background"
+            />
+          </div>
+
+          {/* Branch Filter */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" /> Branch
+            </label>
+            <select
+              value={filterBranch}
+              onChange={(e) => {
+                setFilterBranch(e.target.value);
+                setHistoryPage(1);
+              }}
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">All Branches</option>
+              {branches.map((b: any) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Direction Filter */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <ArrowRightLeft className="w-3.5 h-3.5" /> Direction
+            </label>
+            <select
+              value={filterDirection}
+              onChange={(e) => {
+                setFilterDirection(e.target.value as any);
+                setHistoryPage(1);
+              }}
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">All Directions</option>
+              <option value="incoming">Incoming</option>
+              <option value="outgoing">Outgoing</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Content List ── */}
+      {filteredHistory.length === 0 ? (
+        <EmptyState
+          message={
+            isAnyFilterActive
+              ? 'No transfers match the selected filters'
+              : isAdminOrOverallManager
+              ? 'No completed transfers found'
+              : 'No completed or cancelled transfers yet'
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {paginatedHistory.map((t) => (
+            <TransferCard key={t.id} transfer={t} />
+          ))}
+
+          {/* ── Pagination Controls ── */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-card border rounded-lg shadow-sm text-xs text-muted-foreground">
+            <div>
+              Showing <span className="font-semibold text-foreground">{(historyPage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
+              <span className="font-semibold text-foreground">{Math.min(historyPage * ITEMS_PER_PAGE, filteredHistory.length)}</span> of{' '}
+              <span className="font-semibold text-foreground">{filteredHistory.length}</span> transfers
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setHistoryPage((prev) => Math.max(prev - 1, 1))}
+                disabled={historyPage === 1}
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Previous
+              </Button>
+              <span className="font-medium px-1 text-foreground">
+                Page {historyPage} of {totalHistoryPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setHistoryPage((prev) => Math.min(prev + 1, totalHistoryPages))}
+                disabled={historyPage === totalHistoryPages}
+              >
+                Next <ChevronRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Transfers</h1>
-          <p className="text-muted-foreground mt-1">Manage stock transfers between branches</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isAdminOrOverallManager ? 'Transfer Histories' : 'Transfers'}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {isAdminOrOverallManager
+              ? 'Completed inter-branch stock transfers across all branches'
+              : 'Manage stock transfers between branches'}
+          </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <ArrowRightLeft className="mr-2 h-4 w-4" />New Transfer
-        </Button>
+        {user?.branchId && (
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <ArrowRightLeft className="mr-2 h-4 w-4" />New Transfer
+          </Button>
+        )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList>
-          <TabsTrigger value="incoming" className="flex items-center gap-1">
-            <ArrowDownLeft className="h-4 w-4" />Incoming
-            {tabTransfers.incoming.length > 0 && (
-              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-purple-600 text-white">
-                {tabTransfers.incoming.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="outgoing" className="flex items-center gap-1">
-            <ArrowUpRight className="h-4 w-4" />Outgoing
-            {tabTransfers.outgoing.length > 0 && (
-              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-gray-600 text-white">
-                {tabTransfers.outgoing.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-1">
-            <History className="h-4 w-4" />History
-          </TabsTrigger>
-        </TabsList>
-
-        {isLoading ? (
-          <div className="mt-6 text-center py-12 text-muted-foreground text-sm">Loading transfers...</div>
-        ) : (
-          <>
-            <TabsContent value="incoming" className="mt-4 space-y-3">
-              {tabTransfers.incoming.length === 0
-                ? <EmptyState message="No incoming transfers waiting for your response" />
-                : tabTransfers.incoming.map((t) => <TransferCard key={t.id} transfer={t} />)}
-            </TabsContent>
-            <TabsContent value="outgoing" className="mt-4 space-y-3">
-              {tabTransfers.outgoing.length === 0
-                ? <EmptyState message="No outgoing transfers pending" />
-                : tabTransfers.outgoing.map((t) => <TransferCard key={t.id} transfer={t} />)}
-            </TabsContent>
-            <TabsContent value="history" className="mt-4 space-y-4">
-              {/* ── Filters Bar ── */}
-              <div className="bg-card border rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between gap-2 border-b pb-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    <Filter className="w-3.5 h-3.5 text-primary" /> Filter History
-                  </div>
-                  {isAnyFilterActive && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleResetFilters}
-                      className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
-                    >
-                      <RotateCcw className="w-3 h-3 mr-1" /> Reset Filters
-                    </Button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Date Filter */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" /> Date
-                    </label>
-                    <Input
-                      type="date"
-                      value={filterDate}
-                      onChange={(e) => {
-                        setFilterDate(e.target.value);
-                        setHistoryPage(1);
-                      }}
-                      className="h-9 text-xs sm:text-sm bg-background"
-                    />
-                  </div>
-
-                  {/* Branch Filter */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <Building2 className="w-3.5 h-3.5" /> Branch
-                    </label>
-                    <select
-                      value={filterBranch}
-                      onChange={(e) => {
-                        setFilterBranch(e.target.value);
-                        setHistoryPage(1);
-                      }}
-                      className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                      <option value="all">All Branches</option>
-                      {branches.map((b: any) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Direction Filter */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <ArrowRightLeft className="w-3.5 h-3.5" /> Direction
-                    </label>
-                    <select
-                      value={filterDirection}
-                      onChange={(e) => {
-                        setFilterDirection(e.target.value as any);
-                        setHistoryPage(1);
-                      }}
-                      className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                      <option value="all">All Directions</option>
-                      <option value="incoming">Incoming</option>
-                      <option value="outgoing">Outgoing</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Content List ── */}
-              {filteredHistory.length === 0 ? (
-                <EmptyState
-                  message={
-                    isAnyFilterActive
-                      ? 'No transfers match the selected filters'
-                      : 'No completed or cancelled transfers yet'
-                  }
-                />
-              ) : (
-                <div className="space-y-3">
-                  {paginatedHistory.map((t) => (
-                    <TransferCard key={t.id} transfer={t} />
-                  ))}
-
-                  {/* ── Pagination Controls ── */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-card border rounded-lg shadow-sm text-xs text-muted-foreground">
-                    <div>
-                      Showing <span className="font-semibold text-foreground">{(historyPage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
-                      <span className="font-semibold text-foreground">{Math.min(historyPage * ITEMS_PER_PAGE, filteredHistory.length)}</span> of{' '}
-                      <span className="font-semibold text-foreground">{filteredHistory.length}</span> transfers
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setHistoryPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={historyPage === 1}
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Previous
-                      </Button>
-                      <span className="font-medium px-1 text-foreground">
-                        Page {historyPage} of {totalHistoryPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setHistoryPage((prev) => Math.min(prev + 1, totalHistoryPages))}
-                        disabled={historyPage === totalHistoryPages}
-                      >
-                        Next <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+      {!isAdminOrOverallManager ? (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <TabsList>
+            <TabsTrigger value="incoming" className="flex items-center gap-1">
+              <ArrowDownLeft className="h-4 w-4" />Incoming
+              {tabTransfers.incoming.length > 0 && (
+                <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-purple-600 text-white">
+                  {tabTransfers.incoming.length}
+                </Badge>
               )}
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
+            </TabsTrigger>
+            <TabsTrigger value="outgoing" className="flex items-center gap-1">
+              <ArrowUpRight className="h-4 w-4" />Outgoing
+              {tabTransfers.outgoing.length > 0 && (
+                <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-gray-600 text-white">
+                  {tabTransfers.outgoing.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-1">
+              <History className="h-4 w-4" />History
+            </TabsTrigger>
+          </TabsList>
+
+          {isLoading ? (
+            <div className="mt-6 text-center py-12 text-muted-foreground text-sm">Loading transfers...</div>
+          ) : (
+            <>
+              <TabsContent value="incoming" className="mt-4 space-y-3">
+                {tabTransfers.incoming.length === 0
+                  ? <EmptyState message="No incoming transfers waiting for your response" />
+                  : tabTransfers.incoming.map((t) => <TransferCard key={t.id} transfer={t} />)}
+              </TabsContent>
+              <TabsContent value="outgoing" className="mt-4 space-y-3">
+                {tabTransfers.outgoing.length === 0
+                  ? <EmptyState message="No outgoing transfers pending" />
+                  : tabTransfers.outgoing.map((t) => <TransferCard key={t.id} transfer={t} />)}
+              </TabsContent>
+              <TabsContent value="history" className="mt-4">
+                {renderHistoryContent()}
+              </TabsContent>
+            </>
+          )}
+        </Tabs>
+      ) : (
+        /* Super Admin & Overall Manager: Completed Transfers Only */
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Badge variant="outline" className="px-3 py-1 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Completed Transfers Only
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              Showing completed transfers across all branches. Pending transfers are excluded.
+            </span>
+          </div>
+
+          {isLoading ? (
+            <div className="mt-6 text-center py-12 text-muted-foreground text-sm">Loading transfer history...</div>
+          ) : (
+            renderHistoryContent()
+          )}
+        </div>
+      )}
 
       {selectedTransfer && (
         <TransferDetailModal
