@@ -139,7 +139,6 @@ function buildThermalHtml(receipt: ReceiptState, printer: PrinterState): string 
     .row { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
     .item { margin-bottom: 4px; }
     .total { font-weight: 900; font-size: 1.1em; }
-    .badge { display: inline-block; border: 1px solid #000; padding: 2px 6px; font-weight: bold; font-size: 0.9em; margin: 4px 0; }
     .sign-line { border-bottom: 1px solid #000; height: 18px; margin-top: 10px; }
     @media print { body { margin: 0; padding: ${printPadding}; } }
   </style>
@@ -149,7 +148,6 @@ function buildThermalHtml(receipt: ReceiptState, printer: PrinterState): string 
     <div class="title">${escapeHtml(receipt.businessName)}</div>
     ${printer.storeTagline ? `<div class="sub">${escapeHtml(printer.storeTagline)}</div>` : ''}
     <div class="sub">${escapeHtml(receipt.title)} &middot; ${escapeHtml(receipt.date)}</div>
-    <div class="badge">SIMULATION - NOT A SALE</div>
   </div>
 
   ${customerLines.length ? `<div class="dashed"></div>${customerLines.join('')}` : ''}
@@ -223,17 +221,17 @@ export function ReceiptSimulator() {
         }
       `}</style>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" onClick={() => addItem(false)}>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <Button size="sm" variant="outline" onClick={() => addItem(false)} className="w-full sm:w-auto">
           <Plus className="mr-1 h-4 w-4" /> Add item
         </Button>
-        <Button size="sm" variant="outline" onClick={() => addItem(true)}>
+        <Button size="sm" variant="outline" onClick={() => addItem(true)} className="w-full sm:w-auto">
           <Plus className="mr-1 h-4 w-4" /> Add outsourced item
         </Button>
-        <Button size="sm" variant="ghost" onClick={reset}>
+        <Button size="sm" variant="ghost" onClick={reset} className="w-full sm:w-auto">
           <RotateCcw className="mr-1 h-4 w-4" /> Reset
         </Button>
-        <Button size="sm" onClick={printThermal} className="ml-auto">
+        <Button size="sm" onClick={printThermal} className="col-span-2 sm:col-span-1 sm:ml-auto">
           <Printer className="mr-1 h-4 w-4" /> Print thermal receipt
         </Button>
       </div>
@@ -245,19 +243,19 @@ export function ReceiptSimulator() {
       </p>
 
       {/* On-screen editing view, laid out like the handwritten sheet */}
-      <div className="receipt-paper mx-auto w-full max-w-[760px] bg-[#f8f6ef] px-8 py-8 shadow-md text-[#1d3c8f]">
+      <div className="receipt-paper mx-auto w-full min-w-0 max-w-[760px] bg-[#f8f6ef] px-4 py-6 sm:px-8 sm:py-8 shadow-md text-[#1d3c8f]">
         <div className="text-center">
           <input
             aria-label="Business name"
             value={receipt.businessName}
             onChange={(e) => setField('businessName', e.target.value)}
-            className="w-full bg-transparent text-center text-xl font-bold tracking-wide outline-none focus:bg-white/60"
+            className="w-full min-w-0 bg-transparent text-center text-base font-bold tracking-wide outline-none focus:bg-white/60 sm:text-xl"
           />
           <input
             aria-label="Document title"
             value={receipt.title}
             onChange={(e) => setField('title', e.target.value)}
-            className="mt-1 w-full bg-transparent text-center text-lg font-semibold tracking-wide outline-none focus:bg-white/60"
+            className="mt-1 w-full min-w-0 bg-transparent text-center text-sm font-semibold tracking-wide outline-none focus:bg-white/60 sm:text-lg"
           />
         </div>
 
@@ -266,18 +264,19 @@ export function ReceiptSimulator() {
             aria-label="Date"
             value={receipt.date}
             onChange={(e) => setField('date', e.target.value)}
-            className="w-36 bg-transparent text-right text-base outline-none focus:bg-white/60"
+            className="w-full min-w-0 bg-transparent text-right text-sm outline-none focus:bg-white/60 sm:w-36 sm:text-base"
           />
         </div>
 
-        <table className="mt-4 w-full table-fixed border-collapse text-base">
+        <div className="mt-4 w-full overflow-x-auto">
+        <table className="min-w-[520px] w-full border-collapse text-sm sm:text-base">
           <colgroup>
-            <col className="w-12" />
+            <col style={{ width: '48px' }} />
             <col />
-            <col className="w-16" />
-            <col className="w-32" />
-            <col className="w-32" />
-            <col className="w-10" />
+            <col style={{ width: '72px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '40px' }} />
           </colgroup>
           <thead>
             <tr className="h-8 text-left font-semibold">
@@ -301,7 +300,7 @@ export function ReceiptSimulator() {
                       value={item.name}
                       placeholder={item.outsourced ? 'Outsourced item name' : ''}
                       onChange={(e) => updateItem(item.id, { name: e.target.value })}
-                      className="w-full bg-transparent outline-none focus:bg-white/60"
+                      className="w-full min-w-[160px] bg-transparent outline-none focus:bg-white/60"
                     />
                     {item.outsourced && (
                       <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium uppercase tracking-wide text-amber-800">
@@ -354,8 +353,9 @@ export function ReceiptSimulator() {
             </tr>
           </tfoot>
         </table>
+        </div>
 
-        <div className="mt-8 space-y-2 text-base">
+        <div className="mt-8 space-y-2 text-sm sm:text-base">
           <FooterField label="NAME" value={receipt.customerName} onChange={(v) => setField('customerName', v)} />
           <FooterField label="CONTACT" value={receipt.contact} onChange={(v) => setField('contact', v)} />
           <FooterField label="SIGN" value={receipt.signature} onChange={(v) => setField('signature', v)} />
@@ -376,12 +376,12 @@ function FooterField({
 }) {
   return (
     <div className="flex items-end gap-2">
-      <span className="w-24 shrink-0 font-semibold">{label}:</span>
+      <span className="w-20 shrink-0 font-semibold sm:w-24">{label}:</span>
       <Input
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 flex-1 rounded-none border-0 border-b border-[#1d3c8f]/40 bg-transparent px-1 text-[#1d3c8f] shadow-none focus-visible:ring-0"
+        className="h-8 min-w-0 flex-1 rounded-none border-0 border-b border-[#1d3c8f]/40 bg-transparent px-1 text-[#1d3c8f] shadow-none focus-visible:ring-0"
       />
     </div>
   )
