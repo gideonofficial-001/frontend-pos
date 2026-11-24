@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
-import { FileText, Phone, Users, Copy, CheckCircle, Store, User } from 'lucide-react'
+import { FileText, Phone, Users, Copy, CheckCircle, Store, User, Receipt } from 'lucide-react'
+import { ReceiptSimulator } from '@/components/invoices/ReceiptSimulator'
 
 const Invoices = () => {
   const { user } = useAuthStore()
@@ -19,6 +20,7 @@ const Invoices = () => {
   const queryClient = useQueryClient()
   
   const [showCustomersModal, setShowCustomersModal] = useState(false)
+  const [showReceiptSim, setShowReceiptSim] = useState(false)
   const [selectedPaymentInvoice, setSelectedPaymentInvoice] = useState<any>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'MPESA'>('CASH')
@@ -121,10 +123,16 @@ const Invoices = () => {
           <h1 className="text-2xl font-bold">{isAdmin ? 'All Branch Invoices' : 'Invoices'}</h1>
           <p className="text-muted-foreground">Manage customer invoices and payments</p>
         </div>
-        <Button onClick={() => setShowCustomersModal(true)} variant="outline" className="bg-background">
-          <Users className="w-4 h-4 mr-2" />
-          View Customers
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowReceiptSim(true)} variant="outline" className="bg-background">
+            <Receipt className="w-4 h-4 mr-2" />
+            Receipt simulator
+          </Button>
+          <Button onClick={() => setShowCustomersModal(true)} variant="outline" className="bg-background">
+            <Users className="w-4 h-4 mr-2" />
+            View Customers
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -207,6 +215,16 @@ const Invoices = () => {
       )}
 
       {/* View Customers Directory Modal */}
+      <Dialog open={showReceiptSim} onOpenChange={setShowReceiptSim}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Receipt className="w-5 h-5" /> Receipt simulator</DialogTitle>
+            <DialogDescription>Draft a receipt for a sale that is not in the system. Nothing here is saved.</DialogDescription>
+          </DialogHeader>
+          <ReceiptSimulator />
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showCustomersModal} onOpenChange={setShowCustomersModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
