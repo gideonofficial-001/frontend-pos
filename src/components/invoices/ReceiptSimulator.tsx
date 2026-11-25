@@ -247,7 +247,7 @@ export function ReceiptSimulator() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 space-y-4 overflow-hidden">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <Button size="sm" variant="outline" onClick={() => addItem(false)} className="w-full sm:w-auto">
           <Plus className="mr-1 h-4 w-4" /> Add item
@@ -270,7 +270,10 @@ export function ReceiptSimulator() {
       )}
 
       {/* On-screen invoice, laid out like the A4 design */}
-      <div className="mx-auto w-full min-w-0 max-w-[794px] bg-white px-4 py-6 shadow-md sm:px-10 sm:py-10">
+      <div
+        className="mx-auto w-full min-w-0 max-w-[794px] bg-white px-4 py-6 text-[#111] shadow-md sm:px-10 sm:py-10"
+        style={{ colorScheme: 'light' }}
+      >
         <div className="text-center">
           <input
             aria-label="Business name"
@@ -293,27 +296,27 @@ export function ReceiptSimulator() {
             aria-label="Document title"
             value={inv.title}
             onChange={(e) => setField('title', e.target.value)}
-            className="w-full bg-transparent px-2 py-3 text-center text-lg font-bold text-white outline-none sm:text-[22px]"
+            className="w-full bg-transparent px-2 py-3 text-center text-lg font-bold text-white outline-none placeholder:text-white/60 sm:text-[22px]"
           />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs sm:text-sm">
           <label className="flex items-center gap-1">
-            <span className="font-bold" style={{ color: '#111' }}>Invoice No:</span>
+            <span className="font-bold text-[#111]">Invoice No:</span>
             <input
               aria-label="Invoice number"
               value={inv.invoiceNo}
               onChange={(e) => setField('invoiceNo', e.target.value)}
-              className="w-28 bg-transparent outline-none focus:bg-blue-50"
+              className="w-28 bg-transparent text-[#111] outline-none focus:bg-blue-50"
             />
           </label>
           <label className="flex items-center gap-1">
-            <span className="font-bold">Date:</span>
+            <span className="font-bold text-[#111]">Date:</span>
             <input
               aria-label="Date"
               value={inv.date}
               onChange={(e) => setField('date', e.target.value)}
-              className="w-28 bg-transparent text-right outline-none focus:bg-blue-50"
+              className="w-28 bg-transparent text-right text-[#111] outline-none focus:bg-blue-50"
             />
           </label>
         </div>
@@ -342,7 +345,7 @@ export function ReceiptSimulator() {
               {inv.items.map((item, index) => {
                 const lineTotal = item.qty * item.unitPrice
                 return (
-                  <tr key={item.id} style={{ background: index % 2 === 1 ? STRIPE : '#fff' }}>
+                  <tr key={item.id} className="text-[#111]" style={{ background: index % 2 === 1 ? STRIPE : '#fff' }}>
                     <td className="border px-2 py-2 text-center align-middle" style={{ borderColor: NAVY }}>
                       {index + 1}
                     </td>
@@ -353,7 +356,7 @@ export function ReceiptSimulator() {
                         value={item.name}
                         placeholder={item.outsourced ? 'Outsourced item name' : ''}
                         onChange={(e) => updateItem(item.id, { name: e.target.value })}
-                        className="w-full resize-none bg-transparent outline-none focus:bg-white/70"
+                        className="w-full resize-none bg-transparent text-[#111] placeholder:text-[#9aa3b2] outline-none focus:bg-white/70"
                       />
                       {item.outsourced && (
                         <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium uppercase tracking-wide text-amber-800">
@@ -369,7 +372,7 @@ export function ReceiptSimulator() {
                         inputMode="decimal"
                         value={item.qty}
                         onChange={(e) => updateItem(item.id, { qty: parseNonNegative(e.target.value) })}
-                        className="w-full bg-transparent text-center outline-none focus:bg-white/70 [appearance:textfield]"
+                        className="w-full bg-transparent text-center text-[#111] outline-none focus:bg-white/70 [appearance:textfield]"
                       />
                     </td>
                     <td className="border px-2 py-2 text-right align-middle" style={{ borderColor: NAVY }}>
@@ -380,7 +383,7 @@ export function ReceiptSimulator() {
                         inputMode="decimal"
                         value={item.unitPrice}
                         onChange={(e) => updateItem(item.id, { unitPrice: parseNonNegative(e.target.value) })}
-                        className="w-full bg-transparent text-right outline-none focus:bg-white/70 [appearance:textfield]"
+                        className="w-full bg-transparent text-right text-[#111] outline-none focus:bg-white/70 [appearance:textfield]"
                       />
                     </td>
                     <td className="border px-2 py-2 text-right align-middle tabular-nums" style={{ borderColor: NAVY }}>
@@ -438,8 +441,8 @@ function FooterField({
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ borderColor: NAVY }}
-        className="h-8 min-w-0 flex-1 rounded-none border-0 border-b bg-transparent px-1 shadow-none focus-visible:ring-0"
+        style={{ borderColor: NAVY, color: '#111' }}
+        className="h-8 min-w-0 flex-1 rounded-none border-0 border-b bg-transparent px-1 text-[#111] shadow-none focus-visible:ring-0"
       />
     </div>
   )
